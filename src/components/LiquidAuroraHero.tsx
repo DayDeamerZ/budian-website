@@ -121,47 +121,45 @@ const FRAGMENT_SHADER = `
     vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
 
     // Precise finite difference for surface normal & ribbon curvature
-    float eps = 0.008;
+    float eps = 0.006;
     float hC = silkField(uv);
     float hX = silkField(uv + vec2(eps, 0.0));
     float hY = silkField(uv + vec2(0.0, eps));
 
-    // Clearer, supple normal relief
-    vec3 normal = normalize(vec3((hC - hX) / eps * 0.22, (hC - hY) / eps * 0.22, 1.0));
+    // Clearer, supple normal relief (0.26 gives crisp, graceful ribbon edges without harshness)
+    vec3 normal = normalize(vec3((hC - hX) / eps * 0.26, (hC - hY) / eps * 0.26, 1.0));
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
 
     // Studio lighting with gentle breeze tilt (Scheme A: no spotlight hotspot)
     vec3 lightDir = normalize(vec3(0.34 + u_mouse.x * 0.10, 0.46 + u_mouse.y * 0.10, 0.85));
     vec3 halfVec = normalize(lightDir + viewDir);
 
-    // Safe tangent calculation (strictly prevents NaN when normal is (0,0,1))
-    vec2 nXY = vec2(normal.y, -normal.x);
-    float nLen = length(nXY);
-    vec3 tangent = nLen > 0.001 ? vec3(nXY / nLen, 0.0) : vec3(1.0, 0.0, 0.0);
-    float anisoDot = clamp(abs(dot(tangent, halfVec)), 0.0, 1.0);
+    // Satin anisotropic sheen along the silk ribbon drape
+    vec3 tangent = normalize(vec3(normal.y, -normal.x, 0.0));
+    float anisoDot = abs(dot(tangent, halfVec));
     float satinSheen = pow(sqrt(max(1.0 - anisoDot * anisoDot, 0.0)), 16.0);
 
     // Velvety Fresnel rim along folded ribbon boundaries
-    float fresnel = pow(clamp(1.0 - dot(normal, viewDir), 0.0, 1.0), 2.2);
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
 
     // Base porcelain light & translucent valley shadow
-    vec3 canvasLight = vec3(0.965, 0.976, 0.994);      // Crisp bright pearl canvas
-    vec3 silkValley  = vec3(0.852, 0.898, 0.966);      // Translucent glacial shadow in folds
+    vec3 canvasLight = vec3(0.978, 0.984, 0.996);      // Crisp bright pearl canvas
+    vec3 silkValley  = vec3(0.875, 0.912, 0.968);      // Translucent glacial shadow in folds
 
     // Graceful chromatic infusion on the ribbon ridges
     vec3 chroma = mix(u_colorA, u_colorB, clamp(hC * 0.85 + uv.x * 0.35, 0.0, 1.0));
     chroma = mix(chroma, u_colorC, clamp(fresnel * 1.25, 0.0, 0.55));
 
     // Composite: Valley depth + Satin surface + Translucent Chroma
-    vec3 col = mix(canvasLight, silkValley, clamp(hC * 0.65, 0.0, 0.90));
+    vec3 col = mix(canvasLight, silkValley, clamp(hC * 0.55, 0.0, 0.85));
     
     // Infuse silk color on the rising flanks and ridges
     float colorSpread = smoothstep(-0.65, 0.65, uv.x + uv.y * 0.28 + u_mouse.x * 0.05);
-    col = mix(col, chroma, colorSpread * clamp(hC * 0.52, 0.06, 0.65));
+    col = mix(col, chroma, colorSpread * clamp(hC * 0.58, 0.06, 0.62));
 
     // Velvety rim highlight & satin silk specular sheen
-    col += chroma * fresnel * 0.42;
-    col += vec3(1.0, 1.0, 1.0) * satinSheen * 0.45;
+    col += chroma * fresnel * 0.48;
+    col += vec3(1.0, 1.0, 1.0) * satinSheen * (0.42 + hC * 0.28);
 
     // Seamless fade into white at the bottom boundary
     float bottomFade = smoothstep(-0.52, -0.32, uv.y);
@@ -566,11 +564,11 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             <div
               className="relative rounded-[24px] p-6 md:p-7 overflow-hidden transition-all duration-500 ease-out"
               style={{
-                background: "linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0.18) 100%)",
-                backdropFilter: "blur(18px) saturate(140%)",
-                WebkitBackdropFilter: "blur(18px) saturate(140%)",
-                border: "1.2px solid rgba(255, 255, 255, 0.82)",
-                boxShadow: "0 20px 40px -12px rgba(15, 23, 42, 0.07), inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), inset 0 -1.5px 1.5px rgba(255, 255, 255, 0.35)",
+                background: "rgba(255, 255, 255, 0.14)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.60)",
+                boxShadow: "inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(255, 255, 255, 0.40)",
               }}
             >
               {/* Pure Soft Specular Sheen (Zero color glare, subtle white light only) */}
@@ -608,9 +606,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                         key={row.idx}
                         className="px-4 py-3 rounded-xl flex items-center justify-between gap-3 transition-colors duration-500"
                         style={{
-                          background: "linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.22) 100%)",
-                          border: "1px solid rgba(255, 255, 255, 0.65)",
-                          boxShadow: "0 2px 6px -1px rgba(15, 23, 42, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.70)",
+                          background: "rgba(255, 255, 255, 0.20)",
+                          border: "1px solid rgba(255, 255, 255, 0.50)",
+                          boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.60)",
                         }}
                       >
                         <div className="flex items-start gap-3">
@@ -629,8 +627,8 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                         <span
                           className="shrink-0 text-[11px] font-medium text-slate-700 px-2.5 py-1 rounded-md"
                           style={{
-                            background: "rgba(255, 255, 255, 0.65)",
-                            border: "1px solid rgba(255, 255, 255, 0.80)",
+                            background: "rgba(255, 255, 255, 0.45)",
+                            border: "1px solid rgba(255, 255, 255, 0.65)",
                           }}
                         >
                           {row.status}

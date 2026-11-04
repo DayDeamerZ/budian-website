@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5173 --host",
-    "build": "node -e \"const fs=require('fs'); fs.copyFileSync('index.template.html','index.html')\" && vite build && node -e \"const fs=require('fs'); fs.copyFileSync('dist/index.html','index.html')\"",
+    "build": "vite build",
     "preview": "vite preview --port 4173"
   },
   "dependencies": {
@@ -25,7 +25,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "tailwindcss": "^4.0.6",
     "typescript": "~5.7.2",
-    "vite": "^6.1.0",
-    "vite-plugin-singlefile": "^2.3.4"
+    "vite": "^6.1.0"
   }
 }
