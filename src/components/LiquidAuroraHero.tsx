@@ -465,90 +465,13 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       onMouseLeave={handleMouseLeave}
       className="relative w-full min-h-[580px] lg:h-[620px] bg-[#F5F8FC] overflow-hidden select-none border-b border-slate-200/60"
     >
-      {/* 1. Golden-Midpoint Multi-Curve Liquid Glass WebGL Canvas */}
+      {/* 1. Ethereal Pearl Silk Ribbon WebGL Canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* 2. Razor-sharp Satin Vector Contours Overlay (Dual-layer Opacity Cross-fade for 100% smooth morphing) */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
-        style={{ opacity: activeIdx === 2 ? 0 : 0.65 }}
-        viewBox="0 0 1440 620"
-        fill="none"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="curveGradBlue1" x1="0%" y1="20%" x2="100%" y2="80%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="38%" stopColor="#38BDF8" stopOpacity="0.30" />
-            <stop offset="70%" stopColor="#6366F1" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="curveGradBlue2" x1="10%" y1="80%" x2="95%" y2="15%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.85" />
-            <stop offset="80%" stopColor="#0EA5E9" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
-          stroke="url(#curveGradBlue1)"
-          strokeWidth="1.8"
-        />
-        <path
-          d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
-          stroke="url(#curveGradBlue2)"
-          strokeWidth="2.2"
-        />
-        <path
-          d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
-          stroke="url(#curveGradBlue1)"
-          strokeWidth="1.4"
-        />
-      </svg>
-
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
-        style={{ opacity: activeIdx === 2 ? 0.40 : 0 }}
-        viewBox="0 0 1440 620"
-        fill="none"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="curveGradSilver1" x1="0%" y1="20%" x2="100%" y2="80%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="40%" stopColor="#FFFFFF" stopOpacity="0.85" />
-            <stop offset="72%" stopColor="#CBD5E1" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="curveGradSilver2" x1="10%" y1="80%" x2="95%" y2="15%">
-            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.9" />
-            <stop offset="80%" stopColor="#E2E8F0" stopOpacity="0.30" />
-            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
-          stroke="url(#curveGradSilver1)"
-          strokeWidth="1.6"
-        />
-        <path
-          d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
-          stroke="url(#curveGradSilver2)"
-          strokeWidth="2.0"
-        />
-        <path
-          d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
-          stroke="url(#curveGradSilver1)"
-          strokeWidth="1.2"
-        />
-      </svg>
-
-      {/* 3. Hero Foreground Grid */}
+      {/* 2. Hero Foreground Grid (Vector curves removed for a completely clean, pure silk canvas) */}
       <div className="relative z-10 max-w-[1280px] mx-auto h-full px-6 md:px-12 py-14 lg:py-0 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
         {/* Left 7 Columns */}
         <div className="lg:col-span-7">
