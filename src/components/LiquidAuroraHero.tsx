@@ -148,28 +148,28 @@ const FRAGMENT_SHADER = `
     vec3 halfAnchored = normalize(anchoredLight + viewDir);
     vec3 halfMouse = normalize(mouseLight + viewDir);
 
-    // Softened satin specular (no blinding glare)
-    float specAnchored = pow(max(dot(normal, halfAnchored), 0.0), 24.0);
-    float specMouse = pow(max(dot(normal, halfMouse), 0.0), 28.0);
-    float totalSpec = specAnchored * 0.72 + specMouse * 0.28;
+    // Softened satin specular (rich liquid sheen, just slightly softer than v2.1's 0.72)
+    float specAnchored = pow(max(dot(normal, halfAnchored), 0.0), 30.0);
+    float specMouse = pow(max(dot(normal, halfMouse), 0.0), 32.0);
+    float totalSpec = specAnchored * 0.65 + specMouse * 0.35;
 
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
 
-    // Soft Pearl-White & Calm Water-Silver base
-    vec3 baseWhite = vec3(0.976, 0.982, 0.994);
-    vec3 coolWater = vec3(0.928, 0.946, 0.978);
+    // Crisp Pearl-White & Liquid Silver base
+    vec3 baseWhite = vec3(0.976, 0.983, 0.996);
+    vec3 coolWater = vec3(0.920, 0.940, 0.976);
 
-    // Anchored right-side aura + partial 25% halo pulled by mouse
-    float anchoredAura = smoothstep(-0.45, 0.65, uv.x + uv.y * 0.2);
-    float partialMouseAura = exp(-length(uv - m0) * 2.6) * 0.28;
-    float auraMix = clamp(anchoredAura * 0.78 + partialMouseAura, 0.0, 1.0);
+    // Rich anchored right-side aura + partial 35% halo pulled by mouse
+    float anchoredAura = smoothstep(-0.50, 0.62, uv.x + uv.y * 0.24);
+    float partialMouseAura = exp(-length(uv - m0) * 2.2) * 0.38;
+    float auraMix = clamp(anchoredAura * 0.85 + partialMouseAura, 0.0, 1.0);
 
-    vec3 ribbonTint = mix(u_colorA, u_colorB, clamp(sin(hC * 3.14 + uv.x) * 0.5 + 0.5, 0.0, 1.0));
+    vec3 ribbonTint = mix(u_colorA, u_colorB, clamp(sin(hC * 3.14159 + uv.x) * 0.5 + 0.5, 0.0, 1.0));
 
-    vec3 col = mix(baseWhite, coolWater, clamp(hC * 0.5, 0.0, 1.0));
-    col = mix(col, ribbonTint, auraMix * clamp(hC * 0.20, 0.0, 0.22));
-    col += ribbonTint * rim * 0.22; // Toned down rim refraction
-    col += vec3(1.0, 1.0, 1.0) * totalSpec * 0.32; // Gentle satin highlight, never blinding
+    vec3 col = mix(baseWhite, coolWater, clamp(hC * 0.55, 0.0, 1.0));
+    col = mix(col, ribbonTint, auraMix * clamp(hC * 0.26, 0.0, 0.31));
+    col += ribbonTint * rim * 0.38;
+    col += vec3(1.0, 1.0, 1.0) * totalSpec * 0.56;
 
     // Seamless transition to white at bottom
     float bottomFade = smoothstep(-0.5, -0.32, uv.y);
@@ -212,8 +212,8 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenExperience,
       secondaryText: "查看六阶流水线",
       secondaryAction: () => onScrollToSection("pipeline"),
-      silkColorA: [0.46, 0.68, 0.96],
-      silkColorB: [0.64, 0.56, 0.94],
+      silkColorA: [0.42, 0.66, 0.99],
+      silkColorB: [0.66, 0.50, 0.98],
       panelTitle: "漫生成 · 工业化制片架构",
       panelCode: "PIPELINE v3.2",
       panelRows: [
@@ -417,13 +417,13 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         glassSlabRef.current.style.transform = `rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
       }
 
-      // Partial glare shift: 70% anchored at top-left (30%, 25%), only 30% pulled by mouse!
+      // Partial glare shift: 60% anchored, 40% pulled by mouse with rich liquid glass sheen
       if (glareRef.current) {
-        const pullX = 32 + mouseCurrent.current.x * 16
-        const pullY = 28 - mouseCurrent.current.y * 16
+        const pullX = 38 + mouseCurrent.current.x * 24
+        const pullY = 35 - mouseCurrent.current.y * 22
         glareRef.current.style.background = `
-          radial-gradient(260px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.34), transparent 65%),
-          radial-gradient(320px circle at 25% 20%, rgba(255,255,255,0.28), transparent 70%)
+          radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.62), transparent 65%),
+          radial-gradient(360px circle at 28% 22%, rgba(255,255,255,0.42), transparent 70%)
         `
       }
 
@@ -594,16 +594,16 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             }}
             className="relative w-full max-w-[440px]"
           >
-            {/* Toned-down Soft Ambient Halo (No blinding glare) */}
+            {/* Rich Iridescent Liquid Aura behind the Glass Slab (v2.1 richness) */}
             <div
-              className="absolute -inset-3 rounded-[28px] opacity-35 blur-2xl pointer-events-none transition-all duration-700"
+              className="absolute -inset-4 rounded-[32px] opacity-60 blur-2xl pointer-events-none transition-all duration-700"
               style={{
                 background:
                   activeIdx === 0
-                    ? "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(99,102,241,0.25))"
+                    ? "linear-gradient(135deg, rgba(56,189,248,0.34), rgba(139,92,246,0.34), rgba(244,114,182,0.24))"
                     : activeIdx === 1
-                    ? "linear-gradient(135deg, rgba(37,99,235,0.28), rgba(14,165,233,0.25))"
-                    : "linear-gradient(135deg, rgba(251,146,60,0.25), rgba(236,72,153,0.22))",
+                    ? "linear-gradient(135deg, rgba(37,99,235,0.34), rgba(14,165,233,0.34), rgba(99,102,241,0.24))"
+                    : "linear-gradient(135deg, rgba(251,146,60,0.34), rgba(236,72,153,0.32), rgba(168,85,247,0.24))",
               }}
             />
 
