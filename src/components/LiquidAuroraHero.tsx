@@ -27,7 +27,6 @@ interface HeroSlide {
   ctaAction: () => void
   secondaryText: string
   secondaryAction: () => void
-  // Smooth iridescent liquid silk shader colors (RGB 0..1)
   silkColorA: [number, number, number]
   silkColorB: [number, number, number]
 }
@@ -45,18 +44,17 @@ const VERTEX_SHADER = `
   }
 `
 
-// Ultra-smooth Domain-Warped Liquid Pearl & Iridescent Chrome Silk Shader (No ugly blobs!)
+// Slow, Meditative Multi-Curve Liquid Glass & Pearl Silk Shader
 const FRAGMENT_SHADER = `
   precision highp float;
 
   uniform vec2 u_resolution;
   uniform float u_time;
   uniform vec2 u_mouse;
-  uniform float u_mouseForce;
   uniform vec3 u_colorA;
   uniform vec3 u_colorB;
 
-  // Smooth procedural noise for silk waves
+  // Smooth value noise
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
   }
@@ -64,7 +62,7 @@ const FRAGMENT_SHADER = `
   float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0); // Quintic C2 smooth interpolation
     return mix(
       mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
@@ -72,60 +70,84 @@ const FRAGMENT_SHADER = `
     );
   }
 
-  // Domain-warped fluid silk elevation
+  // Multi-layered flowing S-curves + liquid glass elevation field
   float fluidHeight(vec2 uv) {
-    vec2 m = u_mouse * vec2(u_resolution.x / u_resolution.y, 1.0);
-    float dist = length(uv - m);
+    float aspect = u_resolution.x / max(u_resolution.y, 1.0);
+    vec2 m = u_mouse * vec2(aspect * 0.5, 0.5);
 
-    // Interactive mouse ripple wave (smooth concentric liquid glass wave)
-    float mouseWave = sin(dist * 14.0 - u_time * 4.5) * exp(-dist * 2.8) * (0.12 + u_mouseForce * 0.18);
+    // Gentle, wide Gaussian cursor deflection (smoothly bends curves without twitching)
+    vec2 diff = uv - m;
+    float distSq = dot(diff, diff);
+    float mouseBend = exp(-distSq * 2.2) * 0.14;
 
-    // Flowing silk folds
-    vec2 q = vec2(
-      sin(uv.x * 2.2 + u_time * 0.45 + uv.y * 1.4),
-      cos(uv.y * 2.0 - u_time * 0.38 + uv.x * 1.1)
+    // Slow time variable for calm, luxurious motion
+    float t = u_time * 0.24;
+
+    // 6 Intertwined Flowing Silk S-Curves (Multiple harmonic curves across the canvas)
+    float curves = 0.0;
+    for (int i = 0; i < 6; i++) {
+      float fi = float(i);
+      float freq = 1.6 + fi * 0.42;
+      float phase = t * (0.65 + fi * 0.12) + fi * 1.15;
+      float slant = uv.x * (0.45 + fi * 0.08) - uv.y * (0.85 - fi * 0.06);
+
+      // Primary S-curve trajectory with harmonic secondary bend
+      float waveY = sin(uv.x * freq + phase) * 0.24
+                  + cos(uv.x * (freq * 0.6) - phase * 0.8) * 0.12
+                  + mouseBend * sin(fi + 1.0);
+
+      float d = (uv.y - waveY) + sin(slant * 2.2 + t) * 0.08;
+      // Smooth bell-shaped liquid glass ridge per curve
+      float ridge = 1.0 / (1.0 + d * d * (26.0 + fi * 6.0));
+      curves += ridge * (0.28 - fi * 0.025);
+    }
+
+    // Soft underlying domain-warped silk undulation
+    vec2 warp = vec2(
+      sin(uv.x * 1.8 + t * 0.7 + uv.y * 1.2),
+      cos(uv.y * 1.6 - t * 0.6 + uv.x * 1.1)
     );
-    float n1 = noise(uv * 2.4 + q * 0.65 + u_time * 0.15);
-    float n2 = sin(uv.x * 3.2 - uv.y * 2.1 + n1 * 2.8 + u_time * 0.5) * 0.5 + 0.5;
+    float silk = noise(uv * 1.8 + warp * 0.45 + mouseBend);
 
-    return n2 * 0.65 + mouseWave;
+    return curves * 0.75 + silk * 0.35 + mouseBend * 0.5;
   }
 
   void main() {
     vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
+    float aspect = u_resolution.x / max(u_resolution.y, 1.0);
 
-    // Compute smooth surface normal from fluid heightfield for Liquid Metal / Pearl Specular
-    float eps = 0.008;
+    // Compute ultra-smooth surface normals for liquid glass refraction & specular sheen
+    float eps = 0.01;
     float hC = fluidHeight(uv);
     float hX = fluidHeight(uv + vec2(eps, 0.0));
     float hY = fluidHeight(uv + vec2(0.0, eps));
-    vec3 normal = normalize(vec3((hC - hX) / eps * 0.15, (hC - hY) / eps * 0.15, 1.0));
+    vec3 normal = normalize(vec3((hC - hX) / eps * 0.14, (hC - hY) / eps * 0.14, 1.0));
 
-    // Light source follows the mouse pointer for interactive metallic/glass sheen
-    vec2 m = u_mouse * vec2(u_resolution.x / u_resolution.y, 1.0);
-    vec3 lightDir = normalize(vec3(m.x - uv.x, m.y - uv.y, 0.85));
+    // Smooth light vector gently tracking the damped mouse
+    vec2 m = u_mouse * vec2(aspect * 0.5, 0.5);
+    vec3 lightDir = normalize(vec3((m.x - uv.x) * 0.6 + 0.25, (m.y - uv.y) * 0.6 + 0.35, 0.9));
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
     vec3 halfVec = normalize(lightDir + viewDir);
 
-    float spec = pow(max(dot(normal, halfVec), 0.0), 42.0);
-    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
+    // Specular & Fresnel reflections
+    float spec = pow(max(dot(normal, halfVec), 0.0), 36.0);
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
 
-    // Pure Pearl-White & Liquid Silver base palette
-    vec3 pearlBase = vec3(0.972, 0.980, 0.994);
-    vec3 silverShadow = vec3(0.915, 0.935, 0.968);
+    // Crisp Pearl-White & Liquid Silver palette
+    vec3 baseWhite = vec3(0.978, 0.984, 0.996);
+    vec3 coolSilk = vec3(0.922, 0.942, 0.976);
 
-    // Concentrate iridescent chroma smoothly on the right half of the canvas
-    float rightBias = smoothstep(-0.35, 0.65, uv.x);
-    vec3 chroma = mix(u_colorA, u_colorB, clamp(hC + uv.y * 0.5, 0.0, 1.0));
+    // Iridescent curve ribbons concentrated more on the right & sweeping diagonally
+    float rightFlow = smoothstep(-0.55, 0.65, uv.x + uv.y * 0.25);
+    vec3 ribbonTint = mix(u_colorA, u_colorB, clamp(sin(hC * 3.14159 + uv.x) * 0.5 + 0.5, 0.0, 1.0));
 
-    vec3 col = mix(pearlBase, silverShadow, hC * 0.55);
-    col = mix(col, chroma, rightBias * 0.22);
-    col += chroma * fresnel * 0.45;
-    // Crisp liquid glass / chrome specular highlight
-    col += vec3(1.0, 1.0, 1.0) * spec * 0.65;
+    vec3 col = mix(baseWhite, coolSilk, clamp(hC * 0.55, 0.0, 1.0));
+    col = mix(col, ribbonTint, rightFlow * clamp(hC * 0.26, 0.0, 0.32));
+    col += ribbonTint * rim * 0.42;
+    col += vec3(1.0, 1.0, 1.0) * spec * 0.72;
 
-    // Keep bottom edge seamlessly fading into pure white (#FFFFFF)
-    float bottomFade = smoothstep(-0.5, -0.32, uv.y);
+    // Seamless fade to pure white at the bottom border
+    float bottomFade = smoothstep(-0.5, -0.30, uv.y);
     col = mix(vec3(1.0), col, bottomFade);
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -138,12 +160,14 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
   onScrollToSection,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const glassSlabRef = useRef<HTMLDivElement | null>(null)
+  const glareRef = useRef<HTMLDivElement | null>(null)
   const [activeIdx, setActiveIdx] = useState(0)
-  // Mouse coordinates for both WebGL fluid wave & 3D Liquid Glass Card tilt
-  const [tilt, setTilt] = useState({ rx: 0, ry: 0, gx: 50, gy: 50 })
-  const mouseTarget = useRef({ x: 0.35, y: 0.0 })
-  const mouseCurrent = useRef({ x: 0.35, y: 0.0 })
-  const mouseForce = useRef(0)
+
+  // Two-stage low-pass damped refs (Zero React re-renders on mousemove -> Zero twitching!)
+  const mouseTarget = useRef({ x: 0.3, y: 0.0 })
+  const mouseMid = useRef({ x: 0.3, y: 0.0 })
+  const mouseCurrent = useRef({ x: 0.3, y: 0.0 })
 
   const slides: HeroSlide[] = [
     {
@@ -161,8 +185,8 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenExperience,
       secondaryText: "查看六阶流水线",
       secondaryAction: () => onScrollToSection("pipeline"),
-      silkColorA: [0.45, 0.68, 0.99],
-      silkColorB: [0.68, 0.52, 0.98],
+      silkColorA: [0.42, 0.66, 0.99],
+      silkColorB: [0.66, 0.50, 0.98],
     },
     {
       id: "traffic",
@@ -179,8 +203,8 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenContact,
       secondaryText: "了解平台能力",
       secondaryAction: () => onScrollToSection("core-products"),
-      silkColorA: [0.32, 0.78, 0.96],
-      silkColorB: [0.38, 0.52, 0.98],
+      silkColorA: [0.30, 0.76, 0.96],
+      silkColorB: [0.36, 0.52, 0.98],
     },
     {
       id: "carrier",
@@ -197,19 +221,20 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: () => onScrollToSection("credentials"),
       secondaryText: "查看官方资质",
       secondaryAction: () => onScrollToSection("credentials"),
-      silkColorA: [0.98, 0.62, 0.45],
-      silkColorB: [0.94, 0.48, 0.76],
+      silkColorA: [0.98, 0.60, 0.44],
+      silkColorB: [0.92, 0.46, 0.76],
     },
   ]
 
+  // Calm 10.5s carousel interval
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIdx((prev) => (prev + 1) % slides.length)
-    }, 7000)
+    }, 10500)
     return () => clearInterval(timer)
   }, [slides.length])
 
-  // WebGL Liquid Pearl & Chrome Silk Canvas
+  // Single unified 60fps/120fps WebGL + 3D Glass DOM Transform Loop (Zero React state updates!)
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -250,7 +275,6 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const uRes = gl.getUniformLocation(prog, "u_resolution")
     const uTime = gl.getUniformLocation(prog, "u_time")
     const uMouse = gl.getUniformLocation(prog, "u_mouse")
-    const uForce = gl.getUniformLocation(prog, "u_mouseForce")
     const uColA = gl.getUniformLocation(prog, "u_colorA")
     const uColB = gl.getUniformLocation(prog, "u_colorB")
 
@@ -271,25 +295,36 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const render = (now: number) => {
       const elapsed = (now - t0) * 0.001
 
-      const dx = mouseTarget.current.x - mouseCurrent.current.x
-      const dy = mouseTarget.current.y - mouseCurrent.current.y
-      mouseCurrent.current.x += dx * 0.08
-      mouseCurrent.current.y += dy * 0.08
+      // 2-Stage C2 Critically Damped Low-Pass Filter (Eliminates all mouse jitter/twitching!)
+      mouseMid.current.x += (mouseTarget.current.x - mouseMid.current.x) * 0.06
+      mouseMid.current.y += (mouseTarget.current.y - mouseMid.current.y) * 0.06
 
-      const speed = Math.min(Math.hypot(dx, dy) * 3.0, 1.0)
-      mouseForce.current += (speed - mouseForce.current) * 0.1
+      mouseCurrent.current.x += (mouseMid.current.x - mouseCurrent.current.x) * 0.045
+      mouseCurrent.current.y += (mouseMid.current.y - mouseCurrent.current.y) * 0.045
+
+      // Update 3D Liquid Glass Slab transform directly on DOM (No React re-render!)
+      if (glassSlabRef.current) {
+        const rx = mouseCurrent.current.y * 6.5 // Gentle ±6.5 deg max tilt
+        const ry = mouseCurrent.current.x * 7.5 // Gentle ±7.5 deg max tilt
+        glassSlabRef.current.style.transform = `rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
+      }
+
+      if (glareRef.current) {
+        const gx = (mouseCurrent.current.x * 0.5 + 0.5) * 100
+        const gy = (-mouseCurrent.current.y * 0.5 + 0.5) * 100
+        glareRef.current.style.background = `radial-gradient(360px circle at ${gx.toFixed(1)}% ${gy.toFixed(1)}%, rgba(255,255,255,0.88), transparent 65%)`
+      }
 
       const targetA = slides[activeIdx].silkColorA
       const targetB = slides[activeIdx].silkColorB
       for (let i = 0; i < 3; i++) {
-        colA[i] += (targetA[i] - colA[i]) * 0.05
-        colB[i] += (targetB[i] - colB[i]) * 0.05
+        colA[i] += (targetA[i] - colA[i]) * 0.03
+        colB[i] += (targetB[i] - colB[i]) * 0.03
       }
 
       gl.uniform2f(uRes, canvas.width, canvas.height)
       gl.uniform1f(uTime, elapsed)
       gl.uniform2f(uMouse, mouseCurrent.current.x, mouseCurrent.current.y)
-      gl.uniform1f(uForce, mouseForce.current)
       gl.uniform3f(uColA, colA[0], colA[1], colA[2])
       gl.uniform3f(uColB, colB[0], colB[1], colB[2])
 
@@ -309,23 +344,15 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const px = (e.clientX - rect.left) / rect.width // 0..1
     const py = (e.clientY - rect.top) / rect.height // 0..1
 
+    // Only update ref — zero React state updates!
     mouseTarget.current = {
       x: px * 2 - 1,
       y: -(py * 2 - 1),
     }
-
-    // 3D Tilt angle for the interactive Liquid Glass Prism Stage
-    setTilt({
-      rx: (0.5 - py) * 14,
-      ry: (px - 0.5) * 16,
-      gx: px * 100,
-      gy: py * 100,
-    })
   }
 
   const handleMouseLeave = () => {
-    mouseTarget.current = { x: 0.35, y: 0.0 }
-    setTilt({ rx: 0, ry: 0, gx: 50, gy: 50 })
+    mouseTarget.current = { x: 0.3, y: 0.0 }
   }
 
   const activeSlide = slides[activeIdx]
@@ -336,23 +363,61 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       onMouseLeave={handleMouseLeave}
       className="relative w-full min-h-[580px] lg:h-[620px] bg-[#F8FAFC] overflow-hidden select-none border-b border-slate-200/60"
     >
-      {/* 1. Interactive Liquid Pearl & Chrome Silk WebGL Canvas */}
+      {/* 1. Interactive Multi-Curve Liquid Pearl & Chrome Silk WebGL Canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* 2. Hero Foreground Grid: Left Concise Typography + Right 3D Interactive Liquid Glass Stage */}
+      {/* 2. Subtle Flowing Vector Bézier Curves Overlay (Enhances layered curve geometry) */}
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-65"
+        viewBox="0 0 1440 620"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="curveGrad1" x1="0%" y1="20%" x2="100%" y2="80%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+            <stop offset="45%" stopColor="#3B82F6" stopOpacity="0.22" />
+            <stop offset="75%" stopColor="#8B5CF6" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="curveGrad2" x1="10%" y1="80%" x2="95%" y2="15%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+            <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.95" />
+            <stop offset="85%" stopColor="#60A5FA" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
+          stroke="url(#curveGrad1)"
+          strokeWidth="2"
+        />
+        <path
+          d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
+          stroke="url(#curveGrad2)"
+          strokeWidth="2.5"
+        />
+        <path
+          d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
+          stroke="url(#curveGrad1)"
+          strokeWidth="1.5"
+        />
+      </svg>
+
+      {/* 3. Hero Foreground Grid: Left Concise Typography + Right 3D Interactive Liquid Glass Stage */}
       <div className="relative z-10 max-w-[1280px] mx-auto h-full px-6 md:px-12 py-14 lg:py-0 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
         {/* Left 7 Columns: Clean Qiniu-style Concise Copy */}
         <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSlide.id}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
             >
               {/* Frosted Liquid Glass Pill Tag */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/75 backdrop-blur-xl border border-white shadow-[0_2px_12px_rgba(15,23,42,0.05),inset_0_1px_0_#FFF] text-xs font-medium text-slate-700 mb-6">
@@ -372,7 +437,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                 {activeSlide.subtitle}
               </p>
 
-              {/* 3 Horizontal Key Points (Exact Qiniu Cloud concise 3-column rhythm) */}
+              {/* 3 Horizontal Key Points */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 mb-10 pt-2">
                 {activeSlide.features.map((feat, idx) => (
                   <div key={idx} className="space-y-1.5">
@@ -386,7 +451,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                 ))}
               </div>
 
-              {/* Action Buttons (Solid Cloud Blue + Interactive Liquid Glass Button) */}
+              {/* Action Buttons */}
               <div className="flex items-center gap-4 flex-wrap">
                 <button
                   onClick={activeSlide.ctaAction}
@@ -407,30 +472,29 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Right 5 Columns: 3D Mouse-Interactive Liquid Glass Prism Stage */}
+        {/* Right 5 Columns: Butter-Smooth 3D Liquid Glass Prism Stage */}
         <div
           className="lg:col-span-5 flex items-center justify-center"
           style={{ perspective: "1200px" }}
         >
-          <motion.div
-            animate={{
-              rotateX: tilt.rx,
-              rotateY: tilt.ry,
+          <div
+            ref={glassSlabRef}
+            style={{
+              transformStyle: "preserve-3d",
+              willChange: "transform",
             }}
-            transition={{ type: "spring", stiffness: 160, damping: 22, mass: 0.6 }}
-            style={{ transformStyle: "preserve-3d" }}
             className="relative w-full max-w-[440px]"
           >
             {/* Ambient Iridescent Liquid Aura behind the Glass Slab */}
             <div
-              className="absolute -inset-4 rounded-[32px] opacity-65 blur-2xl pointer-events-none transition-all duration-500"
+              className="absolute -inset-4 rounded-[32px] opacity-65 blur-2xl pointer-events-none transition-all duration-700"
               style={{
                 background:
                   activeIdx === 0
-                    ? "linear-gradient(135deg, rgba(56,189,248,0.35), rgba(139,92,246,0.35), rgba(244,114,182,0.25))"
+                    ? "linear-gradient(135deg, rgba(56,189,248,0.32), rgba(139,92,246,0.32), rgba(244,114,182,0.22))"
                     : activeIdx === 1
-                    ? "linear-gradient(135deg, rgba(37,99,235,0.35), rgba(14,165,233,0.35), rgba(99,102,241,0.25))"
-                    : "linear-gradient(135deg, rgba(251,146,60,0.35), rgba(236,72,153,0.32), rgba(168,85,247,0.25))",
+                    ? "linear-gradient(135deg, rgba(37,99,235,0.32), rgba(14,165,233,0.32), rgba(99,102,241,0.22))"
+                    : "linear-gradient(135deg, rgba(251,146,60,0.32), rgba(236,72,153,0.30), rgba(168,85,247,0.22))",
               }}
             />
 
@@ -439,19 +503,21 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
               className="relative rounded-[26px] p-6 md:p-7 overflow-hidden"
               style={{
                 background:
-                  "linear-gradient(145deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.38) 100%)",
+                  "linear-gradient(145deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.42) 100%)",
                 backdropFilter: "blur(28px) saturate(190%)",
                 WebkitBackdropFilter: "blur(28px) saturate(190%)",
-                border: "1.5px solid rgba(255, 255, 255, 0.92)",
+                border: "1.5px solid rgba(255, 255, 255, 0.94)",
                 boxShadow:
-                  "0 28px 60px -15px rgba(15, 23, 42, 0.12), 0 4px 16px rgba(15, 23, 42, 0.04), inset 0 2px 2px rgba(255, 255, 255, 1), inset 0 -1px 2px rgba(255, 255, 255, 0.6)",
+                  "0 28px 60px -15px rgba(15, 23, 42, 0.11), 0 4px 16px rgba(15, 23, 42, 0.04), inset 0 2px 2px rgba(255, 255, 255, 1), inset 0 -1px 2px rgba(255, 255, 255, 0.65)",
               }}
             >
-              {/* Dynamic Specular Glare Reflection following Mouse Pointer */}
+              {/* Dynamic Specular Glare Reflection (Updated directly via ref for 0-jitter) */}
               <div
-                className="pointer-events-none absolute inset-0 transition-opacity duration-200"
+                ref={glareRef}
+                className="pointer-events-none absolute inset-0"
                 style={{
-                  background: `radial-gradient(320px circle at ${tilt.gx}% ${tilt.gy}%, rgba(255,255,255,0.85), transparent 60%)`,
+                  background:
+                    "radial-gradient(360px circle at 65% 50%, rgba(255,255,255,0.88), transparent 65%)",
                   mixBlendMode: "overlay",
                 }}
               />
@@ -467,7 +533,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                   </span>
                 </div>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/80 text-blue-600 font-medium border border-white">
-                  LIVE 3D GLASS
+                  LIQUID GLASS
                 </span>
               </div>
 
@@ -577,10 +643,10 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                   <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
                   生成式 AI 双轨水印合规
                 </span>
-                <span>移动鼠标体验 3D 液态折射</span>
+                <span>丝滑阻尼 · 3D 液态玻璃折射</span>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
 
@@ -593,7 +659,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
               key={s.id}
               onClick={() => setActiveIdx(idx)}
               aria-label={`切换到 ${s.productName}`}
-              className={`h-[4px] rounded-full transition-all duration-300 cursor-pointer ${
+              className={`h-[4px] rounded-full transition-all duration-500 cursor-pointer ${
                 isActive
                   ? "w-8 bg-[#1664FF]"
                   : "w-4 bg-slate-300 hover:bg-slate-400"

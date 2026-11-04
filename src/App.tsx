@@ -25,8 +25,9 @@ import {
 import { LiquidAuroraHero } from "./components/LiquidAuroraHero"
 import { SpotlightCard } from "./components/ui/SpotlightCard"
 import { LegalAndContactModals, type ModalType } from "./components/LegalAndContactModals"
+import { LOGO_DATA_URI } from "./lib/logoData"
 
-const LOGO_PATH = "./assets/logo.png"
+const LOGO_PATH = LOGO_DATA_URI
 
 const PIPELINE_STEPS = [
   {
