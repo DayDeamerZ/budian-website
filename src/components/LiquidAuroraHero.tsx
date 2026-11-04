@@ -168,6 +168,11 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
   const glareRef = useRef<HTMLDivElement | null>(null)
   const auraOrbRef = useRef<HTMLDivElement | null>(null)
   const [activeIdx, setActiveIdx] = useState(0)
+  const activeIdxRef = useRef(activeIdx)
+
+  useEffect(() => {
+    activeIdxRef.current = activeIdx
+  }, [activeIdx])
 
   // Ultra-gentle weak-interaction breeze refs
   const mouseTarget = useRef({ x: 0.2, y: 0.0 })
@@ -368,9 +373,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
 
     let animId: number
     const t0 = performance.now()
-    const colA = [...slides[activeIdx].silkColorA]
-    const colB = [...slides[activeIdx].silkColorB]
-    const colC = [...slides[activeIdx].silkColorC]
+    const colA = [...slides[0].silkColorA]
+    const colB = [...slides[0].silkColorB]
+    const colC = [...slides[0].silkColorC]
 
     const render = (now: number) => {
       const elapsed = (now - t0) * 0.001
@@ -406,13 +411,16 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         `
       }
 
-      const targetA = slides[activeIdx].silkColorA
-      const targetB = slides[activeIdx].silkColorB
-      const targetC = slides[activeIdx].silkColorC
+      // Continuous wave shape flow with butter-smooth color blending across slide transitions
+      const targetSlide = slides[activeIdxRef.current] || slides[0]
+      const targetA = targetSlide.silkColorA
+      const targetB = targetSlide.silkColorB
+      const targetC = targetSlide.silkColorC
+      const colorLerp = 0.028
       for (let i = 0; i < 3; i++) {
-        colA[i] += (targetA[i] - colA[i]) * 0.025
-        colB[i] += (targetB[i] - colB[i]) * 0.025
-        colC[i] += (targetC[i] - colC[i]) * 0.025
+        colA[i] += (targetA[i] - colA[i]) * colorLerp
+        colB[i] += (targetB[i] - colB[i]) * colorLerp
+        colC[i] += (targetC[i] - colC[i]) * colorLerp
       }
 
       gl.uniform2f(uRes, canvas.width, canvas.height)
@@ -431,7 +439,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       cancelAnimationFrame(animId)
       window.removeEventListener("resize", resize)
     }
-  }, [activeIdx])
+  }, [])
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -472,14 +480,35 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         <defs>
           <linearGradient id="curveGrad1" x1="0%" y1="20%" x2="100%" y2="80%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="42%" stopColor="#3B82F6" stopOpacity="0.24" />
-            <stop offset="74%" stopColor="#7C3AED" stopOpacity="0.28" />
+            <stop
+              offset="42%"
+              stopColor={
+                activeIdx === 0 ? "#3B82F6" : activeIdx === 1 ? "#0284C7" : "#F59E0B"
+              }
+              stopOpacity="0.24"
+              style={{ transition: "stop-color 1.2s ease" }}
+            />
+            <stop
+              offset="74%"
+              stopColor={
+                activeIdx === 0 ? "#7C3AED" : activeIdx === 1 ? "#4F46E5" : "#EC4899"
+              }
+              stopOpacity="0.28"
+              style={{ transition: "stop-color 1.2s ease" }}
+            />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="curveGrad2" x1="10%" y1="80%" x2="95%" y2="15%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
             <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.9" />
-            <stop offset="82%" stopColor="#38BDF8" stopOpacity="0.26" />
+            <stop
+              offset="82%"
+              stopColor={
+                activeIdx === 0 ? "#38BDF8" : activeIdx === 1 ? "#06B6D4" : "#FB923C"
+              }
+              stopOpacity="0.26"
+              style={{ transition: "stop-color 1.2s ease" }}
+            />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
         </defs>
@@ -591,7 +620,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
           >
             {/* 1. Balanced Midpoint Iridescent Base Aura (opacity-70: between v2.3's 60 and v2.4's 85) */}
             <div
-              className="absolute -inset-4 rounded-[32px] opacity-70 blur-2xl pointer-events-none transition-all duration-700"
+              className="absolute -inset-4 rounded-[32px] opacity-70 blur-2xl pointer-events-none transition-all duration-1000 ease-out"
               style={{
                 background:
                   activeIdx === 0
@@ -605,7 +634,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             {/* 2. Subtle Secondary Ambient Glow (opacity-45, gently drifts with breeze) */}
             <div
               ref={auraOrbRef}
-              className="absolute -top-4 -right-4 w-40 h-40 rounded-full opacity-45 blur-2xl pointer-events-none"
+              className="absolute -top-4 -right-4 w-40 h-40 rounded-full opacity-45 blur-2xl pointer-events-none transition-all duration-1000 ease-out"
               style={{
                 background:
                   activeIdx === 0
@@ -639,64 +668,74 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                 }}
               />
 
-              {/* Calm Architectural Header */}
-              <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-white/70">
-                <span className="text-[14px] font-semibold text-slate-900 tracking-tight">
-                  {activeSlide.panelTitle}
-                </span>
-                <span className="text-[11px] font-mono text-slate-500 tracking-wider">
-                  {activeSlide.panelCode}
-                </span>
-              </div>
-
-              {/* Translucent Nested Glass Rows */}
-              <div className="relative z-10 space-y-2.5">
-                {activeSlide.panelRows.map((row) => (
-                  <div
-                    key={row.idx}
-                    className="px-4 py-3.5 rounded-xl flex items-center justify-between gap-3"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.44) 100%)",
-                      backdropFilter: "blur(14px)",
-                      WebkitBackdropFilter: "blur(14px)",
-                      border: "1px solid rgba(255,255,255,0.88)",
-                      boxShadow:
-                        "0 2px 10px rgba(15,23,42,0.03), inset 0 1px 1px rgba(255,255,255,0.95)",
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-[11px] font-mono font-medium text-slate-400 pt-0.5 select-none">
-                        {row.idx}
-                      </span>
-                      <div>
-                        <div className="text-[13px] font-semibold text-slate-800 leading-snug">
-                          {row.name}
-                        </div>
-                        <div className="text-[11.5px] text-slate-500 mt-0.5">
-                          {row.spec}
-                        </div>
-                      </div>
-                    </div>
-                    <span
-                      className="shrink-0 text-[11px] font-medium text-slate-700 px-2.5 py-1 rounded-md"
-                      style={{
-                        background: "rgba(255,255,255,0.72)",
-                        border: "1px solid rgba(255,255,255,0.92)",
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,1)",
-                      }}
-                    >
-                      {row.status}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeSlide.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {/* Calm Architectural Header */}
+                  <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-white/70">
+                    <span className="text-[14px] font-semibold text-slate-900 tracking-tight">
+                      {activeSlide.panelTitle}
+                    </span>
+                    <span className="text-[11px] font-mono text-slate-500 tracking-wider">
+                      {activeSlide.panelCode}
                     </span>
                   </div>
-                ))}
-              </div>
 
-              {/* Grounded Bottom Metadata Bar */}
-              <div className="relative z-10 mt-4 pt-3.5 border-t border-white/70 flex items-center justify-between text-[11.5px] text-slate-600">
-                <span>{activeSlide.panelFooterLeft}</span>
-                <span className="text-slate-800 font-medium">{activeSlide.panelFooterRight}</span>
-              </div>
+                  {/* Translucent Nested Glass Rows */}
+                  <div className="relative z-10 space-y-2.5">
+                    {activeSlide.panelRows.map((row) => (
+                      <div
+                        key={row.idx}
+                        className="px-4 py-3.5 rounded-xl flex items-center justify-between gap-3"
+                        style={{
+                          background:
+                            "linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.44) 100%)",
+                          backdropFilter: "blur(14px)",
+                          WebkitBackdropFilter: "blur(14px)",
+                          border: "1px solid rgba(255,255,255,0.88)",
+                          boxShadow:
+                            "0 2px 10px rgba(15,23,42,0.03), inset 0 1px 1px rgba(255,255,255,0.95)",
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="text-[11px] font-mono font-medium text-slate-400 pt-0.5 select-none">
+                            {row.idx}
+                          </span>
+                          <div>
+                            <div className="text-[13px] font-semibold text-slate-800 leading-snug">
+                              {row.name}
+                            </div>
+                            <div className="text-[11.5px] text-slate-500 mt-0.5">
+                              {row.spec}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          className="shrink-0 text-[11px] font-medium text-slate-700 px-2.5 py-1 rounded-md"
+                          style={{
+                            background: "rgba(255,255,255,0.72)",
+                            border: "1px solid rgba(255,255,255,0.92)",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,1)",
+                          }}
+                        >
+                          {row.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grounded Bottom Metadata Bar */}
+                  <div className="relative z-10 mt-4 pt-3.5 border-t border-white/70 flex items-center justify-between text-[11.5px] text-slate-600">
+                    <span>{activeSlide.panelFooterLeft}</span>
+                    <span className="text-slate-800 font-medium">{activeSlide.panelFooterRight}</span>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
         </div>
