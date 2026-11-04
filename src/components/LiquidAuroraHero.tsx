@@ -16,8 +16,10 @@ interface HeroSlide {
   ctaAction: () => void
   secondaryText: string
   secondaryAction: () => void
+  // Vivid RGB colors (0..1) for distinct, unmistakable Liquid Glass wave refraction
   silkColorA: [number, number, number]
   silkColorB: [number, number, number]
+  silkColorC: [number, number, number]
   panelTitle: string
   panelCode: string
   panelRows: {
@@ -43,10 +45,9 @@ const VERTEX_SHADER = `
   }
 `
 
-// Water-Surface Ripple + Multi-Curve Liquid Glass Shader
-// - 75% anchored studio light & aura (never pulls all light away)
-// - 25% partial halo + multi-point water wake ripples on mouse movement
-// - Softened anti-glare specular highlights
+// High-Contrast Light-Mode 3D Liquid Glass & Water-Ripple Caustics Shader
+// - Distinct sculptural wave ridges & troughs so liquid glass refraction is 100% visible on any screen
+// - Multi-point water wake ripples + partial aura pull on mouse interaction
 const FRAGMENT_SHADER = `
   precision highp float;
 
@@ -55,9 +56,10 @@ const FRAGMENT_SHADER = `
   uniform vec2 u_mouse;        // Smoothed primary cursor
   uniform vec2 u_trail1;       // Water wake trail point 1
   uniform vec2 u_trail2;       // Water wake trail point 2
-  uniform float u_rippleAmp;   // Gentle ripple excitation when cursor moves
+  uniform float u_rippleAmp;   // Ripple excitation
   uniform vec3 u_colorA;
   uniform vec3 u_colorB;
+  uniform vec3 u_colorC;
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -74,7 +76,7 @@ const FRAGMENT_SHADER = `
     );
   }
 
-  // Water surface wave elevation field
+  // Sculptural 3D Liquid Glass & Water-Ripple Elevation Field
   float fluidHeight(vec2 uv) {
     float aspect = u_resolution.x / max(u_resolution.y, 1.0);
     vec2 scale = vec2(aspect * 0.5, 0.5);
@@ -83,47 +85,47 @@ const FRAGMENT_SHADER = `
     vec2 m1 = u_trail1 * scale;
     vec2 m2 = u_trail2 * scale;
 
-    float t = u_time * 0.22;
+    float t = u_time * 0.24;
 
-    // 1. Water-surface concentric ripples & wake interference (水面波澜感)
+    // 1. Pronounced Water-Surface Concentric Ripples & Wake Interference
     float d0 = length(uv - m0);
     float d1 = length(uv - m1);
     float d2 = length(uv - m2);
 
-    // Gentle ambient water breathing wave + cursor wake ripples
-    float ripple0 = sin(d0 * 20.0 - u_time * 2.8) * exp(-d0 * 3.8);
-    float ripple1 = sin(d1 * 16.0 - u_time * 2.4) * exp(-d1 * 3.4);
-    float ripple2 = sin(d2 * 12.0 - u_time * 2.0) * exp(-d2 * 3.0);
+    float ripple0 = sin(d0 * 24.0 - u_time * 3.2) * exp(-d0 * 3.2);
+    float ripple1 = sin(d1 * 18.0 - u_time * 2.6) * exp(-d1 * 2.8);
+    float ripple2 = sin(d2 * 14.0 - u_time * 2.1) * exp(-d2 * 2.4);
 
-    // Partial soft pull (only gently swells the water near the pointer)
-    float partialPull = exp(-d0 * d0 * 3.5) * 0.08;
-    float waterRipples = (ripple0 * 0.045 + ripple1 * 0.035 + ripple2 * 0.025) * (0.35 + u_rippleAmp * 0.65) + partialPull;
+    // Partial liquid lens dome pulled by mouse
+    float mouseLens = exp(-d0 * d0 * 3.2) * 0.22;
+    float waterWave = (ripple0 * 0.085 + ripple1 * 0.065 + ripple2 * 0.045) * (0.45 + u_rippleAmp * 0.75) + mouseLens;
 
-    // 2. 6 Intertwined Flowing Silk S-Curves (refracted by water ripples)
-    vec2 refractedUv = uv + vec2(ripple0, ripple1) * (0.012 + u_rippleAmp * 0.015);
+    // 2. 6 Deep Sculptural Flowing Liquid Glass Ribbons (S-Curves)
+    vec2 refractedUv = uv + vec2(ripple0, ripple1) * (0.025 + u_rippleAmp * 0.025);
     float curves = 0.0;
     for (int i = 0; i < 6; i++) {
       float fi = float(i);
-      float freq = 1.5 + fi * 0.38;
-      float phase = t * (0.6 + fi * 0.1) + fi * 1.1;
-      float slant = refractedUv.x * (0.42 + fi * 0.07) - refractedUv.y * (0.82 - fi * 0.05);
+      float freq = 1.55 + fi * 0.40;
+      float phase = t * (0.62 + fi * 0.11) + fi * 1.12;
+      float slant = refractedUv.x * (0.45 + fi * 0.08) - refractedUv.y * (0.80 - fi * 0.05);
 
-      float waveY = sin(refractedUv.x * freq + phase) * 0.23
-                  + cos(refractedUv.x * (freq * 0.58) - phase * 0.75) * 0.11;
+      float waveY = sin(refractedUv.x * freq + phase) * 0.26
+                  + cos(refractedUv.x * (freq * 0.58) - phase * 0.78) * 0.14;
 
-      float d = (refractedUv.y - waveY) + sin(slant * 2.0 + t) * 0.07;
-      float ridge = 1.0 / (1.0 + d * d * (28.0 + fi * 6.0));
-      curves += ridge * (0.24 - fi * 0.022);
+      float d = (refractedUv.y - waveY) + sin(slant * 2.1 + t) * 0.09;
+      // Sharp, distinct 3D glass wave crest
+      float ridge = 1.0 / (1.0 + d * d * (22.0 + fi * 5.0));
+      curves += ridge * (0.34 - fi * 0.028);
     }
 
-    // 3. Calm underlying liquid surface undulation
+    // 3. Domain-warped fluid fold depth
     vec2 warp = vec2(
-      sin(refractedUv.x * 1.6 + t * 0.65 + refractedUv.y * 1.1),
-      cos(refractedUv.y * 1.5 - t * 0.55 + refractedUv.x * 1.0)
+      sin(refractedUv.x * 1.8 + t * 0.7 + refractedUv.y * 1.2),
+      cos(refractedUv.y * 1.6 - t * 0.6 + refractedUv.x * 1.1)
     );
-    float silk = noise(refractedUv * 1.7 + warp * 0.4);
+    float silk = noise(refractedUv * 2.0 + warp * 0.5);
 
-    return curves * 0.68 + silk * 0.28 + waterRipples;
+    return curves * 0.85 + silk * 0.35 + waterWave;
   }
 
   void main() {
@@ -131,48 +133,62 @@ const FRAGMENT_SHADER = `
     float aspect = u_resolution.x / max(u_resolution.y, 1.0);
     vec2 m0 = u_mouse * vec2(aspect * 0.5, 0.5);
 
-    // Compute smooth water surface normals
-    float eps = 0.009;
+    // High-relief surface normals so every liquid ridge & water ripple is clearly visible!
+    float eps = 0.007;
     float hC = fluidHeight(uv);
     float hX = fluidHeight(uv + vec2(eps, 0.0));
     float hY = fluidHeight(uv + vec2(0.0, eps));
-    vec3 normal = normalize(vec3((hC - hX) / eps * 0.12, (hC - hY) / eps * 0.12, 1.0));
+    vec3 normal = normalize(vec3((hC - hX) / eps * 0.26, (hC - hY) / eps * 0.26, 1.0));
 
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
 
-    // Primary Studio Light is ANCHORED (75% weight) so moving the mouse never pulls all light away!
-    vec3 anchoredLight = normalize(vec3(0.32, 0.38, 0.92));
-    // Secondary Partial Light follows mouse (only 25% weight)
-    vec3 mouseLight = normalize(vec3((m0.x - uv.x) * 0.45 + 0.2, (m0.y - uv.y) * 0.45 + 0.2, 0.95));
+    // 70% Anchored Studio Light + 30% Mouse-Trailed Light
+    vec3 anchoredLight = normalize(vec3(0.35, 0.42, 0.88));
+    vec3 mouseLight = normalize(vec3((m0.x - uv.x) * 0.55 + 0.15, (m0.y - uv.y) * 0.55 + 0.15, 0.90));
 
     vec3 halfAnchored = normalize(anchoredLight + viewDir);
     vec3 halfMouse = normalize(mouseLight + viewDir);
 
-    // Softened satin specular (rich liquid sheen, just slightly softer than v2.1's 0.72)
-    float specAnchored = pow(max(dot(normal, halfAnchored), 0.0), 30.0);
+    // Crisp liquid glass caustics & refraction bands
+    float specAnchored = pow(max(dot(normal, halfAnchored), 0.0), 28.0);
     float specMouse = pow(max(dot(normal, halfMouse), 0.0), 32.0);
     float totalSpec = specAnchored * 0.65 + specMouse * 0.35;
 
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+    // Fresnel edge refraction (gives each wave a thick glass edge)
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 1.65);
 
-    // Crisp Pearl-White & Liquid Silver base
-    vec3 baseWhite = vec3(0.976, 0.983, 0.996);
-    vec3 coolWater = vec3(0.920, 0.940, 0.976);
+    // Chromatic dispersion shift along surface normal (True Liquid Glass RGB refraction!)
+    float chromaShift = (normal.x + normal.y) * 2.4;
+    vec3 glassChroma = mix(
+      u_colorA,
+      u_colorB,
+      clamp(sin(hC * 4.2 + uv.x * 1.8 + chromaShift) * 0.5 + 0.5, 0.0, 1.0)
+    );
+    glassChroma = mix(glassChroma, u_colorC, clamp(fresnel * 1.4, 0.0, 0.65));
 
-    // Rich anchored right-side aura + partial 35% halo pulled by mouse
-    float anchoredAura = smoothstep(-0.50, 0.62, uv.x + uv.y * 0.24);
-    float partialMouseAura = exp(-length(uv - m0) * 2.2) * 0.38;
-    float auraMix = clamp(anchoredAura * 0.85 + partialMouseAura, 0.0, 1.0);
+    // Base canvas: luminous ice-pearl with rich cobalt/violet liquid glass valleys
+    vec3 canvasLight = vec3(0.965, 0.976, 0.995);
+    vec3 liquidValley = vec3(0.845, 0.888, 0.965);
 
-    vec3 ribbonTint = mix(u_colorA, u_colorB, clamp(sin(hC * 3.14159 + uv.x) * 0.5 + 0.5, 0.0, 1.0));
+    // Anchored aura across center-right + 35% partial aura pulled by mouse pointer
+    float anchoredZone = smoothstep(-0.58, 0.48, uv.x + uv.y * 0.22);
+    float mouseHalo = exp(-length(uv - m0) * 2.1) * 0.45;
+    float colorPresence = clamp(anchoredZone * 0.85 + mouseHalo, 0.18, 1.0);
 
-    vec3 col = mix(baseWhite, coolWater, clamp(hC * 0.55, 0.0, 1.0));
-    col = mix(col, ribbonTint, auraMix * clamp(hC * 0.26, 0.0, 0.31));
-    col += ribbonTint * rim * 0.38;
-    col += vec3(1.0, 1.0, 1.0) * totalSpec * 0.56;
+    // Rich, unmistakable liquid glass color & shadow depth
+    vec3 col = mix(canvasLight, liquidValley, clamp(hC * 0.72, 0.0, 1.0));
+    col = mix(col, glassChroma, colorPresence * clamp(hC * 0.48, 0.08, 0.56));
 
-    // Seamless transition to white at bottom
-    float bottomFade = smoothstep(-0.5, -0.32, uv.y);
+    // Add glass rim caustics and glossy liquid highlights
+    col += glassChroma * fresnel * 0.52;
+    col += vec3(1.0, 1.0, 1.0) * totalSpec * 0.62;
+
+    // Subtle dark refractive trough lines (makes water ripples & curves pop with 3D relief)
+    float troughShadow = smoothstep(0.0, 0.25, abs(normal.x) + abs(normal.y));
+    col -= (1.0 - u_colorA) * troughShadow * 0.045;
+
+    // Smoothly blend the very bottom edge (last 10%) into the white page below
+    float bottomFade = smoothstep(-0.5, -0.38, uv.y);
     col = mix(vec3(1.0), col, bottomFade);
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -187,9 +203,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const glassSlabRef = useRef<HTMLDivElement | null>(null)
   const glareRef = useRef<HTMLDivElement | null>(null)
+  const auraOrbRef = useRef<HTMLDivElement | null>(null)
   const [activeIdx, setActiveIdx] = useState(0)
 
-  // Multi-point water trail refs (creates authentic water wake ripples)
   const mouseTarget = useRef({ x: 0.3, y: 0.0 })
   const mouseCurrent = useRef({ x: 0.3, y: 0.0 })
   const trail1 = useRef({ x: 0.3, y: 0.0 })
@@ -212,8 +228,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenExperience,
       secondaryText: "查看六阶流水线",
       secondaryAction: () => onScrollToSection("pipeline"),
-      silkColorA: [0.42, 0.66, 0.99],
-      silkColorB: [0.66, 0.50, 0.98],
+      silkColorA: [0.22, 0.52, 0.98], // Deep Sapphire Blue
+      silkColorB: [0.52, 0.36, 0.96], // Electric Violet
+      silkColorC: [0.14, 0.78, 0.95], // Cyan Prism
       panelTitle: "漫生成 · 工业化制片架构",
       panelCode: "PIPELINE v3.2",
       panelRows: [
@@ -254,8 +271,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenContact,
       secondaryText: "了解平台能力",
       secondaryAction: () => onScrollToSection("core-products"),
-      silkColorA: [0.36, 0.74, 0.94],
-      silkColorB: [0.42, 0.56, 0.95],
+      silkColorA: [0.12, 0.65, 0.95],
+      silkColorB: [0.25, 0.42, 0.96],
+      silkColorC: [0.20, 0.85, 0.78],
       panelTitle: "步点流量 · 智能分发与归因矩阵",
       panelCode: "RTB ENGINE",
       panelRows: [
@@ -296,8 +314,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: () => onScrollToSection("credentials"),
       secondaryText: "查看官方资质",
       secondaryAction: () => onScrollToSection("credentials"),
-      silkColorA: [0.94, 0.64, 0.48],
-      silkColorB: [0.88, 0.52, 0.74],
+      silkColorA: [0.96, 0.46, 0.28],
+      silkColorB: [0.88, 0.32, 0.68],
+      silkColorC: [0.58, 0.36, 0.95],
       panelTitle: "运营商基地 · 官方授权合作体系",
       panelCode: "OFFICIAL PARTNER",
       panelRows: [
@@ -377,6 +396,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const uRippleAmp = gl.getUniformLocation(prog, "u_rippleAmp")
     const uColA = gl.getUniformLocation(prog, "u_colorA")
     const uColB = gl.getUniformLocation(prog, "u_colorB")
+    const uColC = gl.getUniformLocation(prog, "u_colorC")
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -391,11 +411,11 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const t0 = performance.now()
     const colA = [...slides[activeIdx].silkColorA]
     const colB = [...slides[activeIdx].silkColorB]
+    const colC = [...slides[activeIdx].silkColorC]
 
     const render = (now: number) => {
       const elapsed = (now - t0) * 0.001
 
-      // Cascaded water wake trail points (creates lingering water ripple lag)
       const dx = mouseTarget.current.x - mouseCurrent.current.x
       const dy = mouseTarget.current.y - mouseCurrent.current.y
       mouseCurrent.current.x += dx * 0.045
@@ -407,31 +427,40 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       trail2.current.x += (trail1.current.x - trail2.current.x) * 0.018
       trail2.current.y += (trail1.current.y - trail2.current.y) * 0.018
 
-      const speed = Math.min(Math.hypot(dx, dy) * 2.2, 1.0)
+      const speed = Math.min(Math.hypot(dx, dy) * 2.5, 1.0)
       rippleAmp.current += (speed - rippleAmp.current) * 0.05
 
-      // Subtle, grounded 3D tilt (reduced max angle to ±3.8 deg so it feels calm and weighty)
+      // 3D Glass Card Tilt
       if (glassSlabRef.current) {
-        const rx = mouseCurrent.current.y * 3.5
-        const ry = mouseCurrent.current.x * 4.2
+        const rx = mouseCurrent.current.y * 4.5
+        const ry = mouseCurrent.current.x * 5.2
         glassSlabRef.current.style.transform = `rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
       }
 
-      // Partial glare shift: 60% anchored, 40% pulled by mouse with rich liquid glass sheen
+      // Partial Aura Orb pulled behind the glass card (gives visible refraction behind the frosted glass!)
+      if (auraOrbRef.current) {
+        const ox = mouseCurrent.current.x * 28
+        const oy = -mouseCurrent.current.y * 28
+        auraOrbRef.current.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`
+      }
+
+      // Liquid Glass Specular Glare + Prism Sheen
       if (glareRef.current) {
-        const pullX = 38 + mouseCurrent.current.x * 24
-        const pullY = 35 - mouseCurrent.current.y * 22
+        const pullX = 42 + mouseCurrent.current.x * 22
+        const pullY = 38 - mouseCurrent.current.y * 22
         glareRef.current.style.background = `
-          radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.62), transparent 65%),
-          radial-gradient(360px circle at 28% 22%, rgba(255,255,255,0.42), transparent 70%)
+          radial-gradient(300px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.68), rgba(147,197,253,0.18) 42%, transparent 70%),
+          linear-gradient(125deg, rgba(255,255,255,0.52) 0%, transparent 45%, rgba(196,181,253,0.22) 100%)
         `
       }
 
       const targetA = slides[activeIdx].silkColorA
       const targetB = slides[activeIdx].silkColorB
+      const targetC = slides[activeIdx].silkColorC
       for (let i = 0; i < 3; i++) {
         colA[i] += (targetA[i] - colA[i]) * 0.025
         colB[i] += (targetB[i] - colB[i]) * 0.025
+        colC[i] += (targetC[i] - colC[i]) * 0.025
       }
 
       gl.uniform2f(uRes, canvas.width, canvas.height)
@@ -442,6 +471,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       gl.uniform1f(uRippleAmp, rippleAmp.current)
       gl.uniform3f(uColA, colA[0], colA[1], colA[2])
       gl.uniform3f(uColB, colB[0], colB[1], colB[2])
+      gl.uniform3f(uColC, colC[0], colC[1], colC[2])
 
       gl.drawArrays(gl.TRIANGLES, 0, 6)
       animId = requestAnimationFrame(render)
@@ -475,17 +505,17 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     <section
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative w-full min-h-[580px] lg:h-[620px] bg-[#F8FAFC] overflow-hidden select-none border-b border-slate-200/60"
+      className="relative w-full min-h-[580px] lg:h-[620px] bg-[#F1F5F9] overflow-hidden select-none border-b border-slate-200/70"
     >
-      {/* 1. Interactive Water-Ripple & Multi-Curve Liquid Glass WebGL Canvas */}
+      {/* 1. High-Relief Water-Ripple & Multi-Curve Liquid Glass WebGL Canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* 2. Subtle Flowing Vector Bézier Curves Overlay */}
+      {/* 2. Crisp Vector Liquid Caustic Curves Overlay */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none opacity-50"
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-80"
         viewBox="0 0 1440 620"
         fill="none"
         preserveAspectRatio="none"
@@ -493,37 +523,37 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         <defs>
           <linearGradient id="curveGrad1" x1="0%" y1="20%" x2="100%" y2="80%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="45%" stopColor="#3B82F6" stopOpacity="0.16" />
-            <stop offset="75%" stopColor="#6366F1" stopOpacity="0.20" />
+            <stop offset="40%" stopColor="#2563EB" stopOpacity="0.32" />
+            <stop offset="72%" stopColor="#7C3AED" stopOpacity="0.38" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="curveGrad2" x1="10%" y1="80%" x2="95%" y2="15%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.8" />
-            <stop offset="85%" stopColor="#60A5FA" stopOpacity="0.18" />
+            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.95" />
+            <stop offset="82%" stopColor="#06B6D4" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path
           d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
           stroke="url(#curveGrad1)"
-          strokeWidth="1.5"
+          strokeWidth="2.2"
         />
         <path
           d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
           stroke="url(#curveGrad2)"
-          strokeWidth="2"
+          strokeWidth="2.8"
         />
         <path
           d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
           stroke="url(#curveGrad1)"
-          strokeWidth="1.2"
+          strokeWidth="1.8"
         />
       </svg>
 
       {/* 3. Hero Foreground Grid */}
       <div className="relative z-10 max-w-[1280px] mx-auto h-full px-6 md:px-12 py-14 lg:py-0 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-        {/* Left 7 Columns: Clean Qiniu-style Concise Copy */}
+        {/* Left 7 Columns */}
         <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
             <motion.div
@@ -533,7 +563,17 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/75 backdrop-blur-xl border border-white shadow-[0_2px_12px_rgba(15,23,42,0.04),inset_0_1px_0_#FFF] text-xs font-medium text-slate-700 mb-6">
+              {/* Thick Liquid Glass Pill Tag */}
+              <div
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-slate-800 mb-6"
+                style={{
+                  background: "linear-gradient(135deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.28) 100%)",
+                  backdropFilter: "blur(20px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                  border: "1px solid rgba(255,255,255,0.92)",
+                  boxShadow: "0 8px 24px -4px rgba(37,99,235,0.12), inset 0 1.5px 1px rgba(255,255,255,1), inset 0 -1px 2px rgba(59,130,246,0.18)",
+                }}
+              >
                 <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                 <span>{activeSlide.tag}</span>
               </div>
@@ -554,7 +594,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                     <div className="text-[18px] md:text-[19px] font-semibold text-slate-900 tracking-tight">
                       {feat.title}
                     </div>
-                    <div className="text-xs md:text-[13px] text-slate-500">
+                    <div className="text-xs md:text-[13px] text-slate-600">
                       {feat.desc}
                     </div>
                   </div>
@@ -564,7 +604,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
               <div className="flex items-center gap-4 flex-wrap">
                 <button
                   onClick={activeSlide.ctaAction}
-                  className="px-8 py-3 rounded-xl bg-[#1664FF] hover:bg-[#0E52D8] text-white text-[15px] font-medium shadow-[0_10px_25px_-5px_rgba(22,100,255,0.35)] hover:shadow-[0_14px_30px_-5px_rgba(22,100,255,0.5)] transition-all inline-flex items-center gap-2 cursor-pointer"
+                  className="px-8 py-3 rounded-xl bg-[#1664FF] hover:bg-[#0E52D8] text-white text-[15px] font-medium shadow-[0_12px_28px_-6px_rgba(22,100,255,0.45),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:shadow-[0_16px_32px_-6px_rgba(22,100,255,0.6)] transition-all inline-flex items-center gap-2 cursor-pointer"
                 >
                   <span>{activeSlide.ctaText}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -572,7 +612,14 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
 
                 <button
                   onClick={activeSlide.secondaryAction}
-                  className="px-7 py-3 rounded-xl bg-white/65 hover:bg-white/90 backdrop-blur-xl border border-white/90 shadow-[0_8px_24px_rgba(15,23,42,0.05),inset_0_1px_1px_#FFF] text-slate-800 text-[14.5px] font-medium transition-all cursor-pointer"
+                  className="px-7 py-3 rounded-xl text-slate-800 text-[14.5px] font-medium transition-all cursor-pointer hover:scale-[1.01]"
+                  style={{
+                    background: "linear-gradient(135deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.24) 100%)",
+                    backdropFilter: "blur(20px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                    border: "1px solid rgba(255,255,255,0.92)",
+                    boxShadow: "0 10px 24px -6px rgba(15,23,42,0.08), inset 0 1.5px 1px rgba(255,255,255,1), inset 0 -1px 2px rgba(59,130,246,0.16)",
+                  }}
                 >
                   {activeSlide.secondaryText}
                 </button>
@@ -581,7 +628,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Right 5 Columns: Grounded, Restrained Enterprise Liquid Glass Console */}
+        {/* Right 5 Columns: Thick Optical 3D Liquid Glass Console */}
         <div
           className="lg:col-span-5 flex items-center justify-center"
           style={{ perspective: "1400px" }}
@@ -594,83 +641,113 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             }}
             className="relative w-full max-w-[440px]"
           >
-            {/* Rich Iridescent Liquid Aura behind the Glass Slab (v2.1 richness) */}
+            {/* 1. Anchored Rich Iridescent Base Aura behind the Glass Slab */}
             <div
-              className="absolute -inset-4 rounded-[32px] opacity-60 blur-2xl pointer-events-none transition-all duration-700"
+              className="absolute -inset-5 rounded-[36px] opacity-85 blur-2xl pointer-events-none transition-all duration-700"
               style={{
                 background:
                   activeIdx === 0
-                    ? "linear-gradient(135deg, rgba(56,189,248,0.34), rgba(139,92,246,0.34), rgba(244,114,182,0.24))"
+                    ? "radial-gradient(circle at 30% 30%, rgba(56,189,248,0.52), rgba(99,102,241,0.45) 50%, rgba(236,72,153,0.32) 85%)"
                     : activeIdx === 1
-                    ? "linear-gradient(135deg, rgba(37,99,235,0.34), rgba(14,165,233,0.34), rgba(99,102,241,0.24))"
-                    : "linear-gradient(135deg, rgba(251,146,60,0.34), rgba(236,72,153,0.32), rgba(168,85,247,0.24))",
+                    ? "radial-gradient(circle at 30% 30%, rgba(37,99,235,0.52), rgba(6,182,212,0.45) 50%, rgba(99,102,241,0.32) 85%)"
+                    : "radial-gradient(circle at 30% 30%, rgba(249,115,22,0.48), rgba(236,72,153,0.44) 50%, rgba(139,92,246,0.32) 85%)",
               }}
             />
 
-            {/* Main Liquid Glass Console Card (Calm, authoritative, zero toy icons) */}
+            {/* 2. Partial Mouse-Pulled Liquid Color Orb behind the Glass (Creates real refractive motion through the glass!) */}
             <div
-              className="relative rounded-2xl p-6 md:p-7 overflow-hidden"
+              ref={auraOrbRef}
+              className="absolute -top-6 -right-6 w-48 h-48 rounded-full opacity-75 blur-xl pointer-events-none"
               style={{
                 background:
-                  "linear-gradient(155deg, rgba(255,255,255,0.68) 0%, rgba(248,250,252,0.46) 100%)",
-                backdropFilter: "blur(24px) saturate(160%)",
-                WebkitBackdropFilter: "blur(24px) saturate(160%)",
-                border: "1px solid rgba(255, 255, 255, 0.88)",
+                  activeIdx === 0
+                    ? "radial-gradient(circle, rgba(59,130,246,0.65) 0%, rgba(168,85,247,0.45) 60%, transparent 100%)"
+                    : activeIdx === 1
+                    ? "radial-gradient(circle, rgba(14,165,233,0.65) 0%, rgba(59,130,246,0.45) 60%, transparent 100%)"
+                    : "radial-gradient(circle, rgba(251,146,60,0.65) 0%, rgba(244,63,94,0.45) 60%, transparent 100%)",
+              }}
+            />
+
+            {/* 3. Thick Optical Liquid Glass Slab (More transparent body + Strong 3D Bevel & Chromatic Rim) */}
+            <div
+              className="relative rounded-[26px] p-6 md:p-7 overflow-hidden"
+              style={{
+                background:
+                  "linear-gradient(145deg, rgba(255,255,255,0.46) 0%, rgba(255,255,255,0.18) 55%, rgba(240,249,255,0.34) 100%)",
+                backdropFilter: "blur(30px) saturate(210%)",
+                WebkitBackdropFilter: "blur(30px) saturate(210%)",
+                border: "1.5px solid rgba(255, 255, 255, 0.88)",
                 boxShadow:
-                  "0 20px 48px -12px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.92)",
+                  "0 30px 60px -12px rgba(30, 58, 138, 0.18), 0 8px 24px -4px rgba(15, 23, 42, 0.06), inset 0 2.5px 2px rgba(255, 255, 255, 1), inset 2px 0 3px rgba(255, 255, 255, 0.75), inset 0 -2.5px 5px rgba(59, 130, 246, 0.28)",
               }}
             >
-              {/* Soft Partial Specular Glare */}
+              {/* Dynamic Specular Glare + Prism Refraction Layer */}
               <div
                 ref={glareRef}
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background:
-                    "radial-gradient(260px circle at 35% 28%, rgba(255,255,255,0.34), transparent 65%)",
+                    "radial-gradient(300px circle at 42% 38%, rgba(255,255,255,0.68), rgba(147,197,253,0.18) 42%, transparent 70%)",
                 }}
               />
 
-              {/* Calm Architectural Header (No blue dot, no flashy badge) */}
-              <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-slate-200/70">
-                <span className="text-[13.5px] font-semibold text-slate-900 tracking-tight">
+              {/* Calm Architectural Header */}
+              <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-white/60">
+                <span className="text-[14px] font-semibold text-slate-900 tracking-tight">
                   {activeSlide.panelTitle}
                 </span>
-                <span className="text-[11px] font-mono text-slate-400 tracking-wider">
+                <span className="text-[11px] font-mono text-slate-600 tracking-wider">
                   {activeSlide.panelCode}
                 </span>
               </div>
 
-              {/* Structured Enterprise Specification Rows */}
-              <div className="relative z-10 space-y-2.5">
+              {/* Translucent Nested Glass Rows (Lets the underlying colorful liquid aura refract through!) */}
+              <div className="relative z-10 space-y-3">
                 {activeSlide.panelRows.map((row) => (
                   <div
                     key={row.idx}
-                    className="px-4 py-3.5 rounded-xl bg-white/65 border border-white/85 flex items-center justify-between gap-3"
+                    className="px-4 py-3.5 rounded-2xl flex items-center justify-between gap-3 transition-all"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(255,255,255,0.62) 0%, rgba(255,255,255,0.34) 100%)",
+                      backdropFilter: "blur(16px)",
+                      WebkitBackdropFilter: "blur(16px)",
+                      border: "1px solid rgba(255,255,255,0.88)",
+                      boxShadow:
+                        "0 4px 14px rgba(15,23,42,0.04), inset 0 1px 1px rgba(255,255,255,0.95)",
+                    }}
                   >
                     <div className="flex items-start gap-3">
-                      <span className="text-[11px] font-mono text-slate-400 pt-0.5 select-none">
+                      <span className="text-[11px] font-mono font-semibold text-blue-600/80 pt-0.5 select-none">
                         {row.idx}
                       </span>
                       <div>
-                        <div className="text-[13px] font-semibold text-slate-800 leading-snug">
+                        <div className="text-[13.5px] font-semibold text-slate-900 leading-snug">
                           {row.name}
                         </div>
-                        <div className="text-[11.5px] text-slate-500 mt-0.5">
+                        <div className="text-[11.5px] text-slate-600 mt-0.5">
                           {row.spec}
                         </div>
                       </div>
                     </div>
-                    <span className="shrink-0 text-[11px] font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-md border border-slate-200/60">
+                    <span
+                      className="shrink-0 text-[11px] font-medium text-slate-800 px-2.5 py-1 rounded-lg"
+                      style={{
+                        background: "rgba(255,255,255,0.65)",
+                        border: "1px solid rgba(255,255,255,0.9)",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,1)",
+                      }}
+                    >
                       {row.status}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Grounded Bottom Metadata Bar (No "移动鼠标体验..." self-referential text) */}
-              <div className="relative z-10 mt-4 pt-3.5 border-t border-slate-200/70 flex items-center justify-between text-[11.5px] text-slate-500">
+              {/* Grounded Bottom Metadata Bar */}
+              <div className="relative z-10 mt-4 pt-3.5 border-t border-white/60 flex items-center justify-between text-[11.5px] text-slate-700 font-medium">
                 <span>{activeSlide.panelFooterLeft}</span>
-                <span className="text-slate-600 font-medium">{activeSlide.panelFooterRight}</span>
+                <span className="text-slate-900">{activeSlide.panelFooterRight}</span>
               </div>
             </div>
           </div>
