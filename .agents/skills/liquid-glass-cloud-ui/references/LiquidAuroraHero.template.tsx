@@ -281,7 +281,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       id: "carrier",
       tag: "权威资质 · 三大运营商基地官方渠道",
       productName: "运营商数字生态",
-      titleAccent: "from-[#D97706] via-[#E11D48] to-[#7C3AED]",
+      titleAccent: "from-[#0F172A] via-[#1E40AF] to-[#2563EB]",
       subtitle: "中国联通与中国电信四大官方基地核心合作伙伴",
       features: [
         { title: "联通音乐/阅读", desc: "中央基地官方授权渠道" },
@@ -292,9 +292,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: () => onScrollToSection("credentials"),
       secondaryText: "查看官方资质",
       secondaryAction: () => onScrollToSection("credentials"),
-      silkColorA: [0.95, 0.54, 0.36],
-      silkColorB: [0.88, 0.40, 0.72],
-      silkColorC: [0.62, 0.42, 0.94],
+      silkColorA: [0.42, 0.58, 0.85],
+      silkColorB: [0.65, 0.74, 0.88],
+      silkColorC: [0.36, 0.50, 0.76],
       panelTitle: "运营商基地 · 官方授权合作体系",
       panelCode: "OFFICIAL PARTNER",
       panelRows: [
@@ -522,39 +522,39 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
 
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
-        style={{ opacity: activeIdx === 2 ? 0.70 : 0 }}
+        style={{ opacity: activeIdx === 2 ? 0.40 : 0 }}
         viewBox="0 0 1440 620"
         fill="none"
         preserveAspectRatio="none"
       >
         <defs>
-          <linearGradient id="curveGradCarrier1" x1="0%" y1="20%" x2="100%" y2="80%">
+          <linearGradient id="curveGradSilver1" x1="0%" y1="20%" x2="100%" y2="80%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="40%" stopColor="#F59E0B" stopOpacity="0.26" />
-            <stop offset="72%" stopColor="#EC4899" stopOpacity="0.24" />
+            <stop offset="40%" stopColor="#FFFFFF" stopOpacity="0.85" />
+            <stop offset="72%" stopColor="#CBD5E1" stopOpacity="0.25" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
-          <linearGradient id="curveGradCarrier2" x1="10%" y1="80%" x2="95%" y2="15%">
+          <linearGradient id="curveGradSilver2" x1="10%" y1="80%" x2="95%" y2="15%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.85" />
-            <stop offset="80%" stopColor="#FB923C" stopOpacity="0.25" />
+            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.9" />
+            <stop offset="80%" stopColor="#E2E8F0" stopOpacity="0.30" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path
           d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
-          stroke="url(#curveGradCarrier1)"
-          strokeWidth="1.8"
+          stroke="url(#curveGradSilver1)"
+          strokeWidth="1.6"
         />
         <path
           d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
-          stroke="url(#curveGradCarrier2)"
-          strokeWidth="2.2"
+          stroke="url(#curveGradSilver2)"
+          strokeWidth="2.0"
         />
         <path
           d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
-          stroke="url(#curveGradCarrier1)"
-          strokeWidth="1.4"
+          stroke="url(#curveGradSilver1)"
+          strokeWidth="1.2"
         />
       </svg>
 
@@ -686,22 +686,23 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
               style={{
                 background:
                   activeIdx === 2
-                    ? "linear-gradient(135deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.24) 100%)"
+                    ? "rgba(255, 255, 255, 0.40)"
                     : "linear-gradient(150deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.30) 60%, rgba(240,249,255,0.42) 100%)",
-                backdropFilter: "blur(28px) saturate(170%)",
-                WebkitBackdropFilter: "blur(28px) saturate(170%)",
-                border: "1.2px solid rgba(255, 255, 255, 0.90)",
+                backdropFilter: activeIdx === 2 ? "blur(24px)" : "blur(28px) saturate(170%)",
+                WebkitBackdropFilter: activeIdx === 2 ? "blur(24px)" : "blur(28px) saturate(170%)",
+                border: activeIdx === 2 ? "1px solid rgba(255, 255, 255, 0.85)" : "1.2px solid rgba(255, 255, 255, 0.90)",
                 boxShadow:
                   activeIdx === 2
-                    ? "0 20px 48px -12px rgba(15, 23, 42, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.03), inset 0 2px 1.5px rgba(255, 255, 255, 1), inset 1px 0 1.5px rgba(255, 255, 255, 0.6), inset 0 -1.5px 2px rgba(255, 255, 255, 0.4)"
+                    ? "0 12px 32px -8px rgba(15, 23, 42, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8)"
                     : "0 24px 52px -12px rgba(30, 58, 138, 0.13), 0 6px 18px -4px rgba(15, 23, 42, 0.05), inset 0 2px 1.5px rgba(255, 255, 255, 1), inset 1.5px 0 2px rgba(255, 255, 255, 0.65), inset 0 -2px 4px rgba(59, 130, 246, 0.18)",
               }}
             >
-              {/* Dynamic Specular Glare */}
+              {/* Dynamic Specular Glare (completely hidden for Slide 2) */}
               <div
                 ref={glareRef}
-                className="pointer-events-none absolute inset-0"
+                className="pointer-events-none absolute inset-0 transition-opacity duration-500"
                 style={{
+                  opacity: activeIdx === 2 ? 0 : 1,
                   background:
                     "radial-gradient(320px circle at 38% 34%, rgba(255,255,255,0.52), rgba(147,197,253,0.12) 45%, transparent 70%)",
                 }}
@@ -733,11 +734,15 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                         className="px-4 py-3.5 rounded-xl flex items-center justify-between gap-3"
                         style={{
                           background:
-                            "linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.44) 100%)",
-                          backdropFilter: "blur(14px)",
-                          WebkitBackdropFilter: "blur(14px)",
-                          border: "1px solid rgba(255,255,255,0.88)",
-                          boxShadow:
+                            activeIdx === 2
+                              ? "rgba(255, 255, 255, 0.48)"
+                              : "linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.44) 100%)",
+                          backdropFilter: "blur(12px)",
+                          WebkitBackdropFilter: "blur(12px)",
+                          border: "1px solid rgba(255,255,255,0.82)",
+                          boxShadow: "0 1px 4px rgba(15,23,42,0.02), inset 0 1px 1px rgba(255,255,255,0.9)",
+                        }}
+                      >
                             "0 2px 10px rgba(15,23,42,0.03), inset 0 1px 1px rgba(255,255,255,0.95)",
                         }}
                       >
