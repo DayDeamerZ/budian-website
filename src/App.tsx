@@ -686,19 +686,23 @@ export function App() {
             </div>
           </div>
 
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
-            <div>Copyright © 2020-2026 安徽步点智能科技有限公司 版权所有</div>
-            <div className="flex items-center gap-6">
-              <button onClick={() => setActiveModal("privacy")} className="hover:text-slate-600 cursor-pointer">隐私政策</button>
-              <button onClick={() => setActiveModal("terms")} className="hover:text-slate-600 cursor-pointer">用户协议</button>
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>Copyright © 2020-2026 安徽步点智能科技有限公司 (bdzn123.com) 版权所有</span>
+              <span className="hidden sm:inline text-slate-300">|</span>
               <a
                 href="https://beian.miit.gov.cn/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-slate-600"
+                className="font-medium text-slate-600 hover:text-blue-600 transition-colors"
               >
-                皖ICP备2024045199号-1
+                ICP备案/许可证号：皖ICP备2025082412号-1（皖ICP备2025082412号）
               </a>
+            </div>
+            <div className="flex items-center gap-6">
+              <button onClick={() => setActiveModal("privacy")} className="hover:text-slate-800 cursor-pointer">隐私政策</button>
+              <button onClick={() => setActiveModal("terms")} className="hover:text-slate-800 cursor-pointer">用户协议</button>
+              <button onClick={() => setActiveModal("aiCompliance")} className="hover:text-slate-800 cursor-pointer">算法与标识合规</button>
             </div>
           </div>
         </div>

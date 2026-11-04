@@ -1,17 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import {
-  ArrowRight,
-  Sparkles,
-  Layers,
-  Film,
-  Mic2,
-  TrendingUp,
-  ShieldCheck,
-  Radio,
-  Award,
-  CheckCircle2,
-} from "lucide-react"
+import { ArrowRight, Sparkles } from "lucide-react"
 
 interface HeroSlide {
   id: string
@@ -29,6 +18,16 @@ interface HeroSlide {
   secondaryAction: () => void
   silkColorA: [number, number, number]
   silkColorB: [number, number, number]
+  panelTitle: string
+  panelCode: string
+  panelRows: {
+    idx: string
+    name: string
+    spec: string
+    status: string
+  }[]
+  panelFooterLeft: string
+  panelFooterRight: string
 }
 
 interface LiquidAuroraHeroProps {
@@ -44,17 +43,22 @@ const VERTEX_SHADER = `
   }
 `
 
-// Slow, Meditative Multi-Curve Liquid Glass & Pearl Silk Shader
+// Water-Surface Ripple + Multi-Curve Liquid Glass Shader
+// - 75% anchored studio light & aura (never pulls all light away)
+// - 25% partial halo + multi-point water wake ripples on mouse movement
+// - Softened anti-glare specular highlights
 const FRAGMENT_SHADER = `
   precision highp float;
 
   uniform vec2 u_resolution;
   uniform float u_time;
-  uniform vec2 u_mouse;
+  uniform vec2 u_mouse;        // Smoothed primary cursor
+  uniform vec2 u_trail1;       // Water wake trail point 1
+  uniform vec2 u_trail2;       // Water wake trail point 2
+  uniform float u_rippleAmp;   // Gentle ripple excitation when cursor moves
   uniform vec3 u_colorA;
   uniform vec3 u_colorB;
 
-  // Smooth value noise
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
   }
@@ -62,7 +66,7 @@ const FRAGMENT_SHADER = `
   float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
-    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0); // Quintic C2 smooth interpolation
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
     return mix(
       mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
       mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
@@ -70,84 +74,105 @@ const FRAGMENT_SHADER = `
     );
   }
 
-  // Multi-layered flowing S-curves + liquid glass elevation field
+  // Water surface wave elevation field
   float fluidHeight(vec2 uv) {
     float aspect = u_resolution.x / max(u_resolution.y, 1.0);
-    vec2 m = u_mouse * vec2(aspect * 0.5, 0.5);
+    vec2 scale = vec2(aspect * 0.5, 0.5);
 
-    // Gentle, wide Gaussian cursor deflection (smoothly bends curves without twitching)
-    vec2 diff = uv - m;
-    float distSq = dot(diff, diff);
-    float mouseBend = exp(-distSq * 2.2) * 0.14;
+    vec2 m0 = u_mouse * scale;
+    vec2 m1 = u_trail1 * scale;
+    vec2 m2 = u_trail2 * scale;
 
-    // Slow time variable for calm, luxurious motion
-    float t = u_time * 0.24;
+    float t = u_time * 0.22;
 
-    // 6 Intertwined Flowing Silk S-Curves (Multiple harmonic curves across the canvas)
+    // 1. Water-surface concentric ripples & wake interference (水面波澜感)
+    float d0 = length(uv - m0);
+    float d1 = length(uv - m1);
+    float d2 = length(uv - m2);
+
+    // Gentle ambient water breathing wave + cursor wake ripples
+    float ripple0 = sin(d0 * 20.0 - u_time * 2.8) * exp(-d0 * 3.8);
+    float ripple1 = sin(d1 * 16.0 - u_time * 2.4) * exp(-d1 * 3.4);
+    float ripple2 = sin(d2 * 12.0 - u_time * 2.0) * exp(-d2 * 3.0);
+
+    // Partial soft pull (only gently swells the water near the pointer)
+    float partialPull = exp(-d0 * d0 * 3.5) * 0.08;
+    float waterRipples = (ripple0 * 0.045 + ripple1 * 0.035 + ripple2 * 0.025) * (0.35 + u_rippleAmp * 0.65) + partialPull;
+
+    // 2. 6 Intertwined Flowing Silk S-Curves (refracted by water ripples)
+    vec2 refractedUv = uv + vec2(ripple0, ripple1) * (0.012 + u_rippleAmp * 0.015);
     float curves = 0.0;
     for (int i = 0; i < 6; i++) {
       float fi = float(i);
-      float freq = 1.6 + fi * 0.42;
-      float phase = t * (0.65 + fi * 0.12) + fi * 1.15;
-      float slant = uv.x * (0.45 + fi * 0.08) - uv.y * (0.85 - fi * 0.06);
+      float freq = 1.5 + fi * 0.38;
+      float phase = t * (0.6 + fi * 0.1) + fi * 1.1;
+      float slant = refractedUv.x * (0.42 + fi * 0.07) - refractedUv.y * (0.82 - fi * 0.05);
 
-      // Primary S-curve trajectory with harmonic secondary bend
-      float waveY = sin(uv.x * freq + phase) * 0.24
-                  + cos(uv.x * (freq * 0.6) - phase * 0.8) * 0.12
-                  + mouseBend * sin(fi + 1.0);
+      float waveY = sin(refractedUv.x * freq + phase) * 0.23
+                  + cos(refractedUv.x * (freq * 0.58) - phase * 0.75) * 0.11;
 
-      float d = (uv.y - waveY) + sin(slant * 2.2 + t) * 0.08;
-      // Smooth bell-shaped liquid glass ridge per curve
-      float ridge = 1.0 / (1.0 + d * d * (26.0 + fi * 6.0));
-      curves += ridge * (0.28 - fi * 0.025);
+      float d = (refractedUv.y - waveY) + sin(slant * 2.0 + t) * 0.07;
+      float ridge = 1.0 / (1.0 + d * d * (28.0 + fi * 6.0));
+      curves += ridge * (0.24 - fi * 0.022);
     }
 
-    // Soft underlying domain-warped silk undulation
+    // 3. Calm underlying liquid surface undulation
     vec2 warp = vec2(
-      sin(uv.x * 1.8 + t * 0.7 + uv.y * 1.2),
-      cos(uv.y * 1.6 - t * 0.6 + uv.x * 1.1)
+      sin(refractedUv.x * 1.6 + t * 0.65 + refractedUv.y * 1.1),
+      cos(refractedUv.y * 1.5 - t * 0.55 + refractedUv.x * 1.0)
     );
-    float silk = noise(uv * 1.8 + warp * 0.45 + mouseBend);
+    float silk = noise(refractedUv * 1.7 + warp * 0.4);
 
-    return curves * 0.75 + silk * 0.35 + mouseBend * 0.5;
+    return curves * 0.68 + silk * 0.28 + waterRipples;
   }
 
   void main() {
     vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
     float aspect = u_resolution.x / max(u_resolution.y, 1.0);
+    vec2 m0 = u_mouse * vec2(aspect * 0.5, 0.5);
 
-    // Compute ultra-smooth surface normals for liquid glass refraction & specular sheen
-    float eps = 0.01;
+    // Compute smooth water surface normals
+    float eps = 0.009;
     float hC = fluidHeight(uv);
     float hX = fluidHeight(uv + vec2(eps, 0.0));
     float hY = fluidHeight(uv + vec2(0.0, eps));
-    vec3 normal = normalize(vec3((hC - hX) / eps * 0.14, (hC - hY) / eps * 0.14, 1.0));
+    vec3 normal = normalize(vec3((hC - hX) / eps * 0.12, (hC - hY) / eps * 0.12, 1.0));
 
-    // Smooth light vector gently tracking the damped mouse
-    vec2 m = u_mouse * vec2(aspect * 0.5, 0.5);
-    vec3 lightDir = normalize(vec3((m.x - uv.x) * 0.6 + 0.25, (m.y - uv.y) * 0.6 + 0.35, 0.9));
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
-    vec3 halfVec = normalize(lightDir + viewDir);
 
-    // Specular & Fresnel reflections
-    float spec = pow(max(dot(normal, halfVec), 0.0), 36.0);
-    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.0);
+    // Primary Studio Light is ANCHORED (75% weight) so moving the mouse never pulls all light away!
+    vec3 anchoredLight = normalize(vec3(0.32, 0.38, 0.92));
+    // Secondary Partial Light follows mouse (only 25% weight)
+    vec3 mouseLight = normalize(vec3((m0.x - uv.x) * 0.45 + 0.2, (m0.y - uv.y) * 0.45 + 0.2, 0.95));
 
-    // Crisp Pearl-White & Liquid Silver palette
-    vec3 baseWhite = vec3(0.978, 0.984, 0.996);
-    vec3 coolSilk = vec3(0.922, 0.942, 0.976);
+    vec3 halfAnchored = normalize(anchoredLight + viewDir);
+    vec3 halfMouse = normalize(mouseLight + viewDir);
 
-    // Iridescent curve ribbons concentrated more on the right & sweeping diagonally
-    float rightFlow = smoothstep(-0.55, 0.65, uv.x + uv.y * 0.25);
-    vec3 ribbonTint = mix(u_colorA, u_colorB, clamp(sin(hC * 3.14159 + uv.x) * 0.5 + 0.5, 0.0, 1.0));
+    // Softened satin specular (no blinding glare)
+    float specAnchored = pow(max(dot(normal, halfAnchored), 0.0), 24.0);
+    float specMouse = pow(max(dot(normal, halfMouse), 0.0), 28.0);
+    float totalSpec = specAnchored * 0.72 + specMouse * 0.28;
 
-    vec3 col = mix(baseWhite, coolSilk, clamp(hC * 0.55, 0.0, 1.0));
-    col = mix(col, ribbonTint, rightFlow * clamp(hC * 0.26, 0.0, 0.32));
-    col += ribbonTint * rim * 0.42;
-    col += vec3(1.0, 1.0, 1.0) * spec * 0.72;
+    float rim = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
 
-    // Seamless fade to pure white at the bottom border
-    float bottomFade = smoothstep(-0.5, -0.30, uv.y);
+    // Soft Pearl-White & Calm Water-Silver base
+    vec3 baseWhite = vec3(0.976, 0.982, 0.994);
+    vec3 coolWater = vec3(0.928, 0.946, 0.978);
+
+    // Anchored right-side aura + partial 25% halo pulled by mouse
+    float anchoredAura = smoothstep(-0.45, 0.65, uv.x + uv.y * 0.2);
+    float partialMouseAura = exp(-length(uv - m0) * 2.6) * 0.28;
+    float auraMix = clamp(anchoredAura * 0.78 + partialMouseAura, 0.0, 1.0);
+
+    vec3 ribbonTint = mix(u_colorA, u_colorB, clamp(sin(hC * 3.14 + uv.x) * 0.5 + 0.5, 0.0, 1.0));
+
+    vec3 col = mix(baseWhite, coolWater, clamp(hC * 0.5, 0.0, 1.0));
+    col = mix(col, ribbonTint, auraMix * clamp(hC * 0.20, 0.0, 0.22));
+    col += ribbonTint * rim * 0.22; // Toned down rim refraction
+    col += vec3(1.0, 1.0, 1.0) * totalSpec * 0.32; // Gentle satin highlight, never blinding
+
+    // Seamless transition to white at bottom
+    float bottomFade = smoothstep(-0.5, -0.32, uv.y);
     col = mix(vec3(1.0), col, bottomFade);
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -164,17 +189,19 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
   const glareRef = useRef<HTMLDivElement | null>(null)
   const [activeIdx, setActiveIdx] = useState(0)
 
-  // Two-stage low-pass damped refs (Zero React re-renders on mousemove -> Zero twitching!)
+  // Multi-point water trail refs (creates authentic water wake ripples)
   const mouseTarget = useRef({ x: 0.3, y: 0.0 })
-  const mouseMid = useRef({ x: 0.3, y: 0.0 })
   const mouseCurrent = useRef({ x: 0.3, y: 0.0 })
+  const trail1 = useRef({ x: 0.3, y: 0.0 })
+  const trail2 = useRef({ x: 0.3, y: 0.0 })
+  const rippleAmp = useRef(0)
 
   const slides: HeroSlide[] = [
     {
       id: "manshengcheng",
       tag: "旗舰产品 · 一站式 AI 漫剧工业化管线",
       productName: "漫生成 Studio",
-      titleAccent: "from-[#1664FF] via-[#4F46E5] to-[#9333EA]",
+      titleAccent: "from-[#1664FF] via-[#3B82F6] to-[#6366F1]",
       subtitle: "为短剧与动态漫而生的一站式 AI 生产运行时",
       features: [
         { title: "跨镜角色锁死", desc: "多视角面容与服装零漂移" },
@@ -185,8 +212,32 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenExperience,
       secondaryText: "查看六阶流水线",
       secondaryAction: () => onScrollToSection("pipeline"),
-      silkColorA: [0.42, 0.66, 0.99],
-      silkColorB: [0.66, 0.50, 0.98],
+      silkColorA: [0.46, 0.68, 0.96],
+      silkColorB: [0.64, 0.56, 0.94],
+      panelTitle: "漫生成 · 工业化制片架构",
+      panelCode: "PIPELINE v3.2",
+      panelRows: [
+        {
+          idx: "01",
+          name: "角色与场景视觉资产锁定",
+          spec: "主角三视图与服装纹理跨集恒定",
+          status: "资产已锁定",
+        },
+        {
+          idx: "02",
+          name: "首尾帧锚定连续视频生成",
+          spec: "参数化镜头推拉与时序防闪烁合成",
+          status: "4K 母带渲染",
+        },
+        {
+          idx: "03",
+          name: "多角色情感配音与声画对齐",
+          spec: "角色专属声线绑定与毫秒级字幕同步",
+          status: "多轨已同步",
+        },
+      ],
+      panelFooterLeft: "符合国家生成式 AI 双轨标识规范",
+      panelFooterRight: "支持单镜节点独立返工",
     },
     {
       id: "traffic",
@@ -203,14 +254,38 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: onOpenContact,
       secondaryText: "了解平台能力",
       secondaryAction: () => onScrollToSection("core-products"),
-      silkColorA: [0.30, 0.76, 0.96],
-      silkColorB: [0.36, 0.52, 0.98],
+      silkColorA: [0.36, 0.74, 0.94],
+      silkColorB: [0.42, 0.56, 0.95],
+      panelTitle: "步点流量 · 智能分发与归因矩阵",
+      panelCode: "RTB ENGINE",
+      panelRows: [
+        {
+          idx: "01",
+          name: "全网头部媒体流量池聚合",
+          spec: "巨量引擎 / 快手磁力 / 腾讯广告直连",
+          status: "全域覆盖",
+        },
+        {
+          idx: "02",
+          name: "oCPC / oCPM 实时转化率预估",
+          spec: "基于深度转化回传数据动态调价",
+          status: "智能出价",
+        },
+        {
+          idx: "03",
+          name: "前置设备指纹反作弊沙箱",
+          spec: "点击行为熵值分析，实时过滤机刷流量",
+          status: "实时清洗",
+        },
+      ],
+      panelFooterLeft: "支持 H5 / 小程序 / Native SDK 接入",
+      panelFooterRight: "S2S 全链路归因回传",
     },
     {
       id: "carrier",
       tag: "权威资质 · 三大运营商基地官方渠道",
       productName: "运营商数字生态",
-      titleAccent: "from-[#EA580C] via-[#E11D48] to-[#7C3AED]",
+      titleAccent: "from-[#D97706] via-[#E11D48] to-[#7C3AED]",
       subtitle: "中国联通与中国电信四大官方基地核心合作伙伴",
       features: [
         { title: "联通音乐/阅读", desc: "中央基地官方授权渠道" },
@@ -221,20 +296,42 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       ctaAction: () => onScrollToSection("credentials"),
       secondaryText: "查看官方资质",
       secondaryAction: () => onScrollToSection("credentials"),
-      silkColorA: [0.98, 0.60, 0.44],
-      silkColorB: [0.92, 0.46, 0.76],
+      silkColorA: [0.94, 0.64, 0.48],
+      silkColorB: [0.88, 0.52, 0.74],
+      panelTitle: "运营商基地 · 官方授权合作体系",
+      panelCode: "OFFICIAL PARTNER",
+      panelRows: [
+        {
+          idx: "01",
+          name: "联通在线中央音乐基地",
+          spec: "数字音乐产品与会员联合运营通道",
+          status: "官方合作渠道",
+        },
+        {
+          idx: "02",
+          name: "中国联通阅读基地",
+          spec: "网文 IP 孵化与漫剧衍生内容合作",
+          status: "官方合作渠道",
+        },
+        {
+          idx: "03",
+          name: "中国电信线上渠道 & 天翼翼支付",
+          spec: "线上触点推广与金融数字权益分发",
+          status: "核心生态伙伴",
+        },
+      ],
+      panelFooterLeft: "四大运营商基地资质齐备",
+      panelFooterRight: "内容采买与联运分成",
     },
   ]
 
-  // Calm 10.5s carousel interval
   useEffect(() => {
     const timer = setInterval(() => {
       setActiveIdx((prev) => (prev + 1) % slides.length)
-    }, 10500)
+    }, 11000)
     return () => clearInterval(timer)
   }, [slides.length])
 
-  // Single unified 60fps/120fps WebGL + 3D Glass DOM Transform Loop (Zero React state updates!)
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -275,6 +372,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const uRes = gl.getUniformLocation(prog, "u_resolution")
     const uTime = gl.getUniformLocation(prog, "u_time")
     const uMouse = gl.getUniformLocation(prog, "u_mouse")
+    const uTrail1 = gl.getUniformLocation(prog, "u_trail1")
+    const uTrail2 = gl.getUniformLocation(prog, "u_trail2")
+    const uRippleAmp = gl.getUniformLocation(prog, "u_rippleAmp")
     const uColA = gl.getUniformLocation(prog, "u_colorA")
     const uColB = gl.getUniformLocation(prog, "u_colorB")
 
@@ -295,36 +395,51 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
     const render = (now: number) => {
       const elapsed = (now - t0) * 0.001
 
-      // 2-Stage C2 Critically Damped Low-Pass Filter (Eliminates all mouse jitter/twitching!)
-      mouseMid.current.x += (mouseTarget.current.x - mouseMid.current.x) * 0.06
-      mouseMid.current.y += (mouseTarget.current.y - mouseMid.current.y) * 0.06
+      // Cascaded water wake trail points (creates lingering water ripple lag)
+      const dx = mouseTarget.current.x - mouseCurrent.current.x
+      const dy = mouseTarget.current.y - mouseCurrent.current.y
+      mouseCurrent.current.x += dx * 0.045
+      mouseCurrent.current.y += dy * 0.045
 
-      mouseCurrent.current.x += (mouseMid.current.x - mouseCurrent.current.x) * 0.045
-      mouseCurrent.current.y += (mouseMid.current.y - mouseCurrent.current.y) * 0.045
+      trail1.current.x += (mouseCurrent.current.x - trail1.current.x) * 0.028
+      trail1.current.y += (mouseCurrent.current.y - trail1.current.y) * 0.028
 
-      // Update 3D Liquid Glass Slab transform directly on DOM (No React re-render!)
+      trail2.current.x += (trail1.current.x - trail2.current.x) * 0.018
+      trail2.current.y += (trail1.current.y - trail2.current.y) * 0.018
+
+      const speed = Math.min(Math.hypot(dx, dy) * 2.2, 1.0)
+      rippleAmp.current += (speed - rippleAmp.current) * 0.05
+
+      // Subtle, grounded 3D tilt (reduced max angle to ±3.8 deg so it feels calm and weighty)
       if (glassSlabRef.current) {
-        const rx = mouseCurrent.current.y * 6.5 // Gentle ±6.5 deg max tilt
-        const ry = mouseCurrent.current.x * 7.5 // Gentle ±7.5 deg max tilt
+        const rx = mouseCurrent.current.y * 3.5
+        const ry = mouseCurrent.current.x * 4.2
         glassSlabRef.current.style.transform = `rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
       }
 
+      // Partial glare shift: 70% anchored at top-left (30%, 25%), only 30% pulled by mouse!
       if (glareRef.current) {
-        const gx = (mouseCurrent.current.x * 0.5 + 0.5) * 100
-        const gy = (-mouseCurrent.current.y * 0.5 + 0.5) * 100
-        glareRef.current.style.background = `radial-gradient(360px circle at ${gx.toFixed(1)}% ${gy.toFixed(1)}%, rgba(255,255,255,0.88), transparent 65%)`
+        const pullX = 32 + mouseCurrent.current.x * 16
+        const pullY = 28 - mouseCurrent.current.y * 16
+        glareRef.current.style.background = `
+          radial-gradient(260px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.34), transparent 65%),
+          radial-gradient(320px circle at 25% 20%, rgba(255,255,255,0.28), transparent 70%)
+        `
       }
 
       const targetA = slides[activeIdx].silkColorA
       const targetB = slides[activeIdx].silkColorB
       for (let i = 0; i < 3; i++) {
-        colA[i] += (targetA[i] - colA[i]) * 0.03
-        colB[i] += (targetB[i] - colB[i]) * 0.03
+        colA[i] += (targetA[i] - colA[i]) * 0.025
+        colB[i] += (targetB[i] - colB[i]) * 0.025
       }
 
       gl.uniform2f(uRes, canvas.width, canvas.height)
       gl.uniform1f(uTime, elapsed)
       gl.uniform2f(uMouse, mouseCurrent.current.x, mouseCurrent.current.y)
+      gl.uniform2f(uTrail1, trail1.current.x, trail1.current.y)
+      gl.uniform2f(uTrail2, trail2.current.x, trail2.current.y)
+      gl.uniform1f(uRippleAmp, rippleAmp.current)
       gl.uniform3f(uColA, colA[0], colA[1], colA[2])
       gl.uniform3f(uColB, colB[0], colB[1], colB[2])
 
@@ -341,10 +456,9 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    const px = (e.clientX - rect.left) / rect.width // 0..1
-    const py = (e.clientY - rect.top) / rect.height // 0..1
+    const px = (e.clientX - rect.left) / rect.width
+    const py = (e.clientY - rect.top) / rect.height
 
-    // Only update ref — zero React state updates!
     mouseTarget.current = {
       x: px * 2 - 1,
       y: -(py * 2 - 1),
@@ -363,15 +477,15 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       onMouseLeave={handleMouseLeave}
       className="relative w-full min-h-[580px] lg:h-[620px] bg-[#F8FAFC] overflow-hidden select-none border-b border-slate-200/60"
     >
-      {/* 1. Interactive Multi-Curve Liquid Pearl & Chrome Silk WebGL Canvas */}
+      {/* 1. Interactive Water-Ripple & Multi-Curve Liquid Glass WebGL Canvas */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* 2. Subtle Flowing Vector Bézier Curves Overlay (Enhances layered curve geometry) */}
+      {/* 2. Subtle Flowing Vector Bézier Curves Overlay */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none opacity-65"
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-50"
         viewBox="0 0 1440 620"
         fill="none"
         preserveAspectRatio="none"
@@ -379,35 +493,35 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         <defs>
           <linearGradient id="curveGrad1" x1="0%" y1="20%" x2="100%" y2="80%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="45%" stopColor="#3B82F6" stopOpacity="0.22" />
-            <stop offset="75%" stopColor="#8B5CF6" stopOpacity="0.28" />
+            <stop offset="45%" stopColor="#3B82F6" stopOpacity="0.16" />
+            <stop offset="75%" stopColor="#6366F1" stopOpacity="0.20" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="curveGrad2" x1="10%" y1="80%" x2="95%" y2="15%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.95" />
-            <stop offset="85%" stopColor="#60A5FA" stopOpacity="0.25" />
+            <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.8" />
+            <stop offset="85%" stopColor="#60A5FA" stopOpacity="0.18" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path
           d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
           stroke="url(#curveGrad1)"
-          strokeWidth="2"
+          strokeWidth="1.5"
         />
         <path
           d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
           stroke="url(#curveGrad2)"
-          strokeWidth="2.5"
+          strokeWidth="2"
         />
         <path
           d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
           stroke="url(#curveGrad1)"
-          strokeWidth="1.5"
+          strokeWidth="1.2"
         />
       </svg>
 
-      {/* 3. Hero Foreground Grid: Left Concise Typography + Right 3D Interactive Liquid Glass Stage */}
+      {/* 3. Hero Foreground Grid */}
       <div className="relative z-10 max-w-[1280px] mx-auto h-full px-6 md:px-12 py-14 lg:py-0 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
         {/* Left 7 Columns: Clean Qiniu-style Concise Copy */}
         <div className="lg:col-span-7">
@@ -419,25 +533,21 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* Frosted Liquid Glass Pill Tag */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/75 backdrop-blur-xl border border-white shadow-[0_2px_12px_rgba(15,23,42,0.05),inset_0_1px_0_#FFF] text-xs font-medium text-slate-700 mb-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/75 backdrop-blur-xl border border-white shadow-[0_2px_12px_rgba(15,23,42,0.04),inset_0_1px_0_#FFF] text-xs font-medium text-slate-700 mb-6">
                 <Sparkles className="w-3.5 h-3.5 text-blue-600" />
                 <span>{activeSlide.tag}</span>
               </div>
 
-              {/* Big Product Headline */}
               <h1
                 className={`text-4xl md:text-[54px] font-bold tracking-tight leading-[1.12] bg-gradient-to-r ${activeSlide.titleAccent} bg-clip-text text-transparent mb-4`}
               >
                 {activeSlide.productName}
               </h1>
 
-              {/* Single-line Clean Subtitle */}
               <p className="text-lg md:text-[23px] text-slate-700 font-normal tracking-wide mb-10">
                 {activeSlide.subtitle}
               </p>
 
-              {/* 3 Horizontal Key Points */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 mb-10 pt-2">
                 {activeSlide.features.map((feat, idx) => (
                   <div key={idx} className="space-y-1.5">
@@ -451,11 +561,10 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                 ))}
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-4 flex-wrap">
                 <button
                   onClick={activeSlide.ctaAction}
-                  className="px-8 py-3 rounded-xl bg-[#1664FF] hover:bg-[#0E52D8] text-white text-[15px] font-medium shadow-[0_10px_25px_-5px_rgba(22,100,255,0.4)] hover:shadow-[0_14px_30px_-5px_rgba(22,100,255,0.55)] transition-all inline-flex items-center gap-2 cursor-pointer"
+                  className="px-8 py-3 rounded-xl bg-[#1664FF] hover:bg-[#0E52D8] text-white text-[15px] font-medium shadow-[0_10px_25px_-5px_rgba(22,100,255,0.35)] hover:shadow-[0_14px_30px_-5px_rgba(22,100,255,0.5)] transition-all inline-flex items-center gap-2 cursor-pointer"
                 >
                   <span>{activeSlide.ctaText}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -463,7 +572,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
 
                 <button
                   onClick={activeSlide.secondaryAction}
-                  className="px-7 py-3 rounded-xl bg-white/65 hover:bg-white/90 backdrop-blur-xl border border-white/90 shadow-[0_8px_24px_rgba(15,23,42,0.06),inset_0_1px_1px_#FFF] text-slate-800 text-[14.5px] font-medium transition-all cursor-pointer"
+                  className="px-7 py-3 rounded-xl bg-white/65 hover:bg-white/90 backdrop-blur-xl border border-white/90 shadow-[0_8px_24px_rgba(15,23,42,0.05),inset_0_1px_1px_#FFF] text-slate-800 text-[14.5px] font-medium transition-all cursor-pointer"
                 >
                   {activeSlide.secondaryText}
                 </button>
@@ -472,10 +581,10 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Right 5 Columns: Butter-Smooth 3D Liquid Glass Prism Stage */}
+        {/* Right 5 Columns: Grounded, Restrained Enterprise Liquid Glass Console */}
         <div
           className="lg:col-span-5 flex items-center justify-center"
-          style={{ perspective: "1200px" }}
+          style={{ perspective: "1400px" }}
         >
           <div
             ref={glassSlabRef}
@@ -485,165 +594,83 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             }}
             className="relative w-full max-w-[440px]"
           >
-            {/* Ambient Iridescent Liquid Aura behind the Glass Slab */}
+            {/* Toned-down Soft Ambient Halo (No blinding glare) */}
             <div
-              className="absolute -inset-4 rounded-[32px] opacity-65 blur-2xl pointer-events-none transition-all duration-700"
+              className="absolute -inset-3 rounded-[28px] opacity-35 blur-2xl pointer-events-none transition-all duration-700"
               style={{
                 background:
                   activeIdx === 0
-                    ? "linear-gradient(135deg, rgba(56,189,248,0.32), rgba(139,92,246,0.32), rgba(244,114,182,0.22))"
+                    ? "linear-gradient(135deg, rgba(56,189,248,0.28), rgba(99,102,241,0.25))"
                     : activeIdx === 1
-                    ? "linear-gradient(135deg, rgba(37,99,235,0.32), rgba(14,165,233,0.32), rgba(99,102,241,0.22))"
-                    : "linear-gradient(135deg, rgba(251,146,60,0.32), rgba(236,72,153,0.30), rgba(168,85,247,0.22))",
+                    ? "linear-gradient(135deg, rgba(37,99,235,0.28), rgba(14,165,233,0.25))"
+                    : "linear-gradient(135deg, rgba(251,146,60,0.25), rgba(236,72,153,0.22))",
               }}
             />
 
-            {/* Main 3D Liquid Glass Slab */}
+            {/* Main Liquid Glass Console Card (Calm, authoritative, zero toy icons) */}
             <div
-              className="relative rounded-[26px] p-6 md:p-7 overflow-hidden"
+              className="relative rounded-2xl p-6 md:p-7 overflow-hidden"
               style={{
                 background:
-                  "linear-gradient(145deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.42) 100%)",
-                backdropFilter: "blur(28px) saturate(190%)",
-                WebkitBackdropFilter: "blur(28px) saturate(190%)",
-                border: "1.5px solid rgba(255, 255, 255, 0.94)",
+                  "linear-gradient(155deg, rgba(255,255,255,0.68) 0%, rgba(248,250,252,0.46) 100%)",
+                backdropFilter: "blur(24px) saturate(160%)",
+                WebkitBackdropFilter: "blur(24px) saturate(160%)",
+                border: "1px solid rgba(255, 255, 255, 0.88)",
                 boxShadow:
-                  "0 28px 60px -15px rgba(15, 23, 42, 0.11), 0 4px 16px rgba(15, 23, 42, 0.04), inset 0 2px 2px rgba(255, 255, 255, 1), inset 0 -1px 2px rgba(255, 255, 255, 0.65)",
+                  "0 20px 48px -12px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.03), inset 0 1px 1px rgba(255, 255, 255, 0.92)",
               }}
             >
-              {/* Dynamic Specular Glare Reflection (Updated directly via ref for 0-jitter) */}
+              {/* Soft Partial Specular Glare */}
               <div
                 ref={glareRef}
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background:
-                    "radial-gradient(360px circle at 65% 50%, rgba(255,255,255,0.88), transparent 65%)",
-                  mixBlendMode: "overlay",
+                    "radial-gradient(260px circle at 35% 28%, rgba(255,255,255,0.34), transparent 65%)",
                 }}
               />
 
-              {/* Top Chrome Header inside Glass Slab */}
-              <div className="relative z-10 flex items-center justify-between pb-4 mb-5 border-b border-slate-200/60">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)]" />
-                  <span className="text-xs font-semibold text-slate-800 tracking-wide">
-                    {activeIdx === 0 && "漫生成 AI 实时生产管线"}
-                    {activeIdx === 1 && "步点程序化竞价引擎"}
-                    {activeIdx === 2 && "运营商四大基地权益矩阵"}
-                  </span>
-                </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-white/80 text-blue-600 font-medium border border-white">
-                  LIQUID GLASS
+              {/* Calm Architectural Header (No blue dot, no flashy badge) */}
+              <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-slate-200/70">
+                <span className="text-[13.5px] font-semibold text-slate-900 tracking-tight">
+                  {activeSlide.panelTitle}
+                </span>
+                <span className="text-[11px] font-mono text-slate-400 tracking-wider">
+                  {activeSlide.panelCode}
                 </span>
               </div>
 
-              {/* Slide-Specific Concise Visual Content inside Liquid Glass */}
-              {activeIdx === 0 && (
-                <div className="relative z-10 space-y-3.5">
-                  <div className="p-3.5 rounded-2xl bg-white/75 border border-white shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center">
-                        <Layers className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-900">主角面容与服饰资产锁定</div>
-                        <div className="text-[11px] text-slate-500">跨 60 集连续分镜零漂移</div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-blue-600">99.4%</span>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-white/75 border border-white shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center">
-                        <Film className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-900">连续动态分镜视频合成</div>
-                        <div className="text-[11px] text-slate-500">首尾帧锚定 · 4K 丝滑运镜</div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-indigo-600">24 fps</span>
-                  </div>
-
-                  <div className="p-3.5 rounded-2xl bg-white/75 border border-white shadow-xs flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-600/10 text-purple-600 flex items-center justify-center">
-                        <Mic2 className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-900">多角色情感配音与字幕对齐</div>
-                        <div className="text-[11px] text-slate-500">拟真 TTS 声线 · 毫秒级同步</div>
-                      </div>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-purple-600">SYNC</span>
-                  </div>
-                </div>
-              )}
-
-              {activeIdx === 1 && (
-                <div className="relative z-10 space-y-3.5">
-                  <div className="p-4 rounded-2xl bg-white/80 border border-white shadow-xs">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-slate-500">实时智能竞价转化率 (CVR)</span>
-                      <span className="text-xs font-semibold text-emerald-600 inline-flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5" /> +42.8%
+              {/* Structured Enterprise Specification Rows */}
+              <div className="relative z-10 space-y-2.5">
+                {activeSlide.panelRows.map((row) => (
+                  <div
+                    key={row.idx}
+                    className="px-4 py-3.5 rounded-xl bg-white/65 border border-white/85 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="text-[11px] font-mono text-slate-400 pt-0.5 select-none">
+                        {row.idx}
                       </span>
-                    </div>
-                    <div className="flex items-end gap-1.5 h-16 pt-2">
-                      {[38, 52, 46, 68, 62, 84, 78, 96].map((h, i) => (
-                        <div
-                          key={i}
-                          style={{ height: `${h}%` }}
-                          className="flex-1 rounded-t-md bg-gradient-to-t from-blue-600/80 to-sky-400/90"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3.5 rounded-2xl bg-white/75 border border-white">
-                      <div className="text-[11px] text-slate-500">反作弊拦截率</div>
-                      <div className="text-lg font-bold text-slate-900 mt-0.5">99.9%</div>
-                    </div>
-                    <div className="p-3.5 rounded-2xl bg-white/75 border border-white">
-                      <div className="text-[11px] text-slate-500">全端接入协议</div>
-                      <div className="text-lg font-bold text-slate-900 mt-0.5">H5 / SDK</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeIdx === 2 && (
-                <div className="relative z-10 grid grid-cols-2 gap-3">
-                  {[
-                    { name: "联通音乐基地", role: "官方合作渠道", icon: Radio },
-                    { name: "联通阅读基地", role: "数字内容生态", icon: Sparkles },
-                    { name: "电信线上渠道", role: "优秀合作伙伴", icon: Award },
-                    { name: "天翼翼支付", role: "核心权益伙伴", icon: ShieldCheck },
-                  ].map((item, idx) => {
-                    const Icon = item.icon
-                    return (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-2xl bg-white/80 border border-white shadow-xs space-y-1.5"
-                      >
-                        <Icon className="w-4 h-4 text-blue-600" />
-                        <div className="text-xs font-semibold text-slate-900">{item.name}</div>
-                        <div className="text-[11px] text-slate-500">{item.role}</div>
+                      <div>
+                        <div className="text-[13px] font-semibold text-slate-800 leading-snug">
+                          {row.name}
+                        </div>
+                        <div className="text-[11.5px] text-slate-500 mt-0.5">
+                          {row.spec}
+                        </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+                    </div>
+                    <span className="shrink-0 text-[11px] font-medium text-slate-600 bg-slate-100/80 px-2.5 py-1 rounded-md border border-slate-200/60">
+                      {row.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-              {/* Bottom Status Bar inside Glass Card */}
-              <div className="relative z-10 mt-5 pt-3.5 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                  生成式 AI 双轨水印合规
-                </span>
-                <span>丝滑阻尼 · 3D 液态玻璃折射</span>
+              {/* Grounded Bottom Metadata Bar (No "移动鼠标体验..." self-referential text) */}
+              <div className="relative z-10 mt-4 pt-3.5 border-t border-slate-200/70 flex items-center justify-between text-[11.5px] text-slate-500">
+                <span>{activeSlide.panelFooterLeft}</span>
+                <span className="text-slate-600 font-medium">{activeSlide.panelFooterRight}</span>
               </div>
             </div>
           </div>
