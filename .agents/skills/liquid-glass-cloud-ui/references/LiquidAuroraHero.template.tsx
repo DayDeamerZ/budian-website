@@ -44,114 +44,125 @@ const VERTEX_SHADER = `
   }
 `
 
-// Golden-Midpoint Liquid Glass Shader with Seamless Weak-Interaction Flow Field
-// - NO circular droplet/ring at the mouse cursor (zero abrupt overlapping spot!)
-// - Mouse acts only as a gentle global flow-field breeze that softly sways the existing silk curves
-// - Exact midpoint optical contrast between v2.3 and v2.4
+// Ethereal Pearl Silk Ribbon Shader with Gentle Breeze Physics (Scheme A)
+// - NO local mouse drops or circular ripples! Pure global breeze field.
+// - 5 Wide, flowing harmonic silk ribbon bands (soft, supple, clearly visible form).
+// - Satin anisotropic sheen & translucent depth contrast (dreamy, graceful, non-glaring).
+// - Form flows perpetually; colors morph smoothly and independently.
 const FRAGMENT_SHADER = `
   precision highp float;
 
   uniform vec2 u_resolution;
   uniform float u_time;
-  uniform vec2 u_mouse; // Heavily damped global breeze vector (-1..1)
+  uniform vec2 u_mouse; // Smooth 2-stage low-pass breeze vector (-1..1)
   uniform vec3 u_colorA;
   uniform vec3 u_colorB;
   uniform vec3 u_colorC;
 
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  // Domain warping for fluid silk drape
+  vec2 silkWarp(vec2 p, float t, vec2 breeze) {
+    float wx = sin(p.y * 1.35 + t * 0.42 + breeze.x * 0.8) * 0.16
+             + cos(p.x * 0.85 - t * 0.35) * 0.10;
+    float wy = cos(p.x * 1.20 - t * 0.38 + breeze.y * 0.8) * 0.14
+             + sin(p.y * 0.95 + t * 0.28) * 0.08;
+    return vec2(wx, wy);
   }
 
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-    return mix(
-      mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), u.x),
-      mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x),
-      u.y
-    );
-  }
+  // 5 Flowing Harmonic Silk Ribbon Bands (Soft, clearly visible, supple draping)
+  float silkField(vec2 uv) {
+    float t = u_time * 0.26;
+    vec2 breeze = u_mouse * 0.14; // Scheme A: Gentle breeze influence only
 
-  // Seamless Multi-Curve Liquid Silk Field (Mouse gently sways curve phase & warp, never draws a circle!)
-  float fluidHeight(vec2 uv) {
-    float t = u_time * 0.22;
+    // Slanted diagonal coordinates following natural textile drape
+    vec2 p = uv;
+    p.y += p.x * 0.26; // Gentle diagonal tilt from bottom-left to top-right
+    p += silkWarp(p, t, breeze);
 
-    // Weak-interaction breeze: softly shifts the global flow field without any localized circular bump
-    vec2 breeze = u_mouse * 0.16;
+    float totalHeight = 0.0;
 
-    // Smooth domain-warped coordinate space
-    vec2 warp = vec2(
-      sin(uv.x * 1.6 + t * 0.65 + uv.y * 1.1 + breeze.x * 1.4),
-      cos(uv.y * 1.5 - t * 0.55 + uv.x * 1.0 + breeze.y * 1.4)
-    );
-    vec2 p = uv + warp * 0.08;
+    // Ribbon 1: Main sweeping silk mantle (broad, gentle base wave)
+    float y1 = sin(p.x * 1.32 + t * 0.55 + breeze.x * 0.4) * 0.30
+             + cos(p.x * 0.62 - t * 0.32) * 0.18;
+    float d1 = p.y - y1 + 0.15;
+    float band1 = exp(-d1 * d1 * 9.5);
+    totalHeight += band1 * 0.46;
 
-    // 6 Intertwined Flowing Silk S-Curves
-    float curves = 0.0;
-    for (int i = 0; i < 6; i++) {
-      float fi = float(i);
-      float freq = 1.52 + fi * 0.38;
-      // Mouse breeze gently modulates the phase & vertical sway of each ribbon at different harmonics
-      float phase = t * (0.60 + fi * 0.10) + fi * 1.12 + breeze.x * (0.7 + fi * 0.15);
-      float slant = p.x * (0.44 + fi * 0.07) - p.y * (0.82 - fi * 0.05) + breeze.y * 0.35;
+    // Ribbon 2: Upper translucent silk veil (harmonious offset)
+    float y2 = sin(p.x * 1.85 + t * 0.72 + 1.2 + breeze.x * 0.5) * 0.26
+             + cos(p.x * 0.95 + t * 0.45) * 0.14;
+    float d2 = p.y - y2 - 0.22;
+    float band2 = exp(-d2 * d2 * 14.0);
+    totalHeight += band2 * 0.38;
 
-      float waveY = sin(p.x * freq + phase) * (0.24 + breeze.y * 0.025)
-                  + cos(p.x * (freq * 0.58) - phase * 0.76) * 0.13;
+    // Ribbon 3: Center dynamic twist fold (fine silk crease, gives supple definition)
+    float y3 = sin(p.x * 2.45 - t * 0.68 + 2.8 + breeze.y * 0.4) * 0.22
+             + sin(p.x * 1.25 + t * 0.85) * 0.12;
+    float d3 = p.y - y3 + 0.02;
+    float band3 = exp(-d3 * d3 * 22.0);
+    totalHeight += band3 * 0.32;
 
-      float d = (p.y - waveY) + sin(slant * 2.0 + t) * 0.08;
-      float ridge = 1.0 / (1.0 + d * d * (24.0 + fi * 5.5));
-      curves += ridge * (0.30 - fi * 0.025);
-    }
+    // Ribbon 4: Lower rolling fold (adds depth and valley shadowing)
+    float y4 = cos(p.x * 1.48 + t * 0.48 + 4.1 + breeze.x * 0.3) * 0.28
+             + sin(p.x * 0.72 - t * 0.38) * 0.16;
+    float d4 = p.y - y4 + 0.42;
+    float band4 = exp(-d4 * d4 * 11.0);
+    totalHeight += band4 * 0.35;
 
-    float silk = noise(p * 1.85 + warp * 0.42);
-    return curves * 0.78 + silk * 0.32;
+    // Ribbon 5: Delicate floating sheer ribbon (subtle high-frequency sheen)
+    float y5 = sin(p.x * 3.10 + t * 0.92 + 0.7) * 0.16;
+    float d5 = p.y - y5 - 0.08;
+    float band5 = exp(-d5 * d5 * 32.0);
+    totalHeight += band5 * 0.22;
+
+    return totalHeight;
   }
 
   void main() {
     vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / u_resolution.y;
 
-    // Golden-midpoint surface normal relief (0.18: clearer than v2.3's 0.12, softer than v2.4's 0.26)
-    float eps = 0.008;
-    float hC = fluidHeight(uv);
-    float hX = fluidHeight(uv + vec2(eps, 0.0));
-    float hY = fluidHeight(uv + vec2(0.0, eps));
-    vec3 normal = normalize(vec3((hC - hX) / eps * 0.18, (hC - hY) / eps * 0.18, 1.0));
+    // Precise finite difference for surface normal & ribbon curvature
+    float eps = 0.006;
+    float hC = silkField(uv);
+    float hX = silkField(uv + vec2(eps, 0.0));
+    float hY = silkField(uv + vec2(0.0, eps));
 
+    // Clearer, supple normal relief (0.26 gives crisp, graceful ribbon edges without harshness)
+    vec3 normal = normalize(vec3((hC - hX) / eps * 0.26, (hC - hY) / eps * 0.26, 1.0));
     vec3 viewDir = vec3(0.0, 0.0, 1.0);
 
-    // Studio light is 85% anchored + 15% subtly tilted by global mouse breeze (no localized spotlight spot!)
-    vec3 lightDir = normalize(vec3(0.32 + u_mouse.x * 0.12, 0.40 + u_mouse.y * 0.12, 0.90));
+    // Studio lighting with gentle breeze tilt (Scheme A: no spotlight hotspot)
+    vec3 lightDir = normalize(vec3(0.34 + u_mouse.x * 0.10, 0.46 + u_mouse.y * 0.10, 0.85));
     vec3 halfVec = normalize(lightDir + viewDir);
 
-    float spec = pow(max(dot(normal, halfVec), 0.0), 30.0);
-    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 1.85);
+    // Satin anisotropic sheen along the silk ribbon drape
+    vec3 tangent = normalize(vec3(normal.y, -normal.x, 0.0));
+    float anisoDot = abs(dot(tangent, halfVec));
+    float satinSheen = pow(sqrt(max(1.0 - anisoDot * anisoDot, 0.0)), 16.0);
 
-    // Subtle chromatic dispersion along wave curvature
-    float chromaShift = (normal.x + normal.y) * 1.5;
-    vec3 glassChroma = mix(
-      u_colorA,
-      u_colorB,
-      clamp(sin(hC * 3.6 + uv.x * 1.5 + chromaShift) * 0.5 + 0.5, 0.0, 1.0)
-    );
-    glassChroma = mix(glassChroma, u_colorC, clamp(fresnel * 1.1, 0.0, 0.45));
+    // Velvety Fresnel rim along folded ribbon boundaries
+    float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
 
-    // Golden-midpoint base & valley contrast
-    vec3 canvasLight = vec3(0.972, 0.980, 0.995);
-    vec3 liquidValley = vec3(0.892, 0.922, 0.974);
+    // Base porcelain light & translucent valley shadow
+    vec3 canvasLight = vec3(0.978, 0.984, 0.996);      // Crisp bright pearl canvas
+    vec3 silkValley  = vec3(0.875, 0.912, 0.968);      // Translucent glacial shadow in folds
 
-    // Smooth diagonal flow zone (shifted very gently by breeze, no circular halo spot)
-    float flowZone = smoothstep(-0.52, 0.56, uv.x + uv.y * 0.24 + u_mouse.x * 0.06);
+    // Graceful chromatic infusion on the ribbon ridges
+    vec3 chroma = mix(u_colorA, u_colorB, clamp(hC * 0.85 + uv.x * 0.35, 0.0, 1.0));
+    chroma = mix(chroma, u_colorC, clamp(fresnel * 1.25, 0.0, 0.55));
 
-    vec3 col = mix(canvasLight, liquidValley, clamp(hC * 0.62, 0.0, 1.0));
-    col = mix(col, glassChroma, flowZone * clamp(hC * 0.36, 0.04, 0.42));
+    // Composite: Valley depth + Satin surface + Translucent Chroma
+    vec3 col = mix(canvasLight, silkValley, clamp(hC * 0.55, 0.0, 0.85));
+    
+    // Infuse silk color on the rising flanks and ridges
+    float colorSpread = smoothstep(-0.65, 0.65, uv.x + uv.y * 0.28 + u_mouse.x * 0.05);
+    col = mix(col, chroma, colorSpread * clamp(hC * 0.58, 0.06, 0.62));
 
-    // Balanced liquid glass rim & satin specular
-    col += glassChroma * fresnel * 0.42;
-    col += vec3(1.0, 1.0, 1.0) * spec * 0.54;
+    // Velvety rim highlight & satin silk specular sheen
+    col += chroma * fresnel * 0.48;
+    col += vec3(1.0, 1.0, 1.0) * satinSheen * (0.42 + hC * 0.28);
 
-    // Seamless transition to white at the bottom border
-    float bottomFade = smoothstep(-0.5, -0.34, uv.y);
+    // Seamless fade into white at the bottom boundary
+    float bottomFade = smoothstep(-0.52, -0.32, uv.y);
     col = mix(vec3(1.0), col, bottomFade);
 
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
@@ -387,28 +398,28 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
       mouseCurrent.current.x += (mouseMid.current.x - mouseCurrent.current.x) * 0.025
       mouseCurrent.current.y += (mouseMid.current.y - mouseCurrent.current.y) * 0.025
 
-      // Subtle, weak-interaction 3D tilt (max ±2.4 deg)
+      // Subtle, weak-interaction 3D tilt (Scheme A: max ±2.0 deg, extremely calm)
       if (glassSlabRef.current) {
-        const rx = mouseCurrent.current.y * 2.2
-        const ry = mouseCurrent.current.x * 2.6
+        const rx = mouseCurrent.current.y * 1.8
+        const ry = mouseCurrent.current.x * 2.0
         glassSlabRef.current.style.transform = `rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
       }
 
-      // Gentle ambient drift of the underlying color aura behind the glass card
-      if (auraOrbRef.current) {
-        const ox = mouseCurrent.current.x * 14
-        const oy = -mouseCurrent.current.y * 14
+      // Gentle ambient drift of the underlying color aura behind the glass card (Slide 0 & 1 only)
+      if (auraOrbRef.current && activeIdxRef.current !== 2) {
+        const ox = mouseCurrent.current.x * 12
+        const oy = -mouseCurrent.current.y * 12
         auraOrbRef.current.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`
       }
 
       // Subtle specular sheen shift across the glass surface
       if (glareRef.current) {
-        const pullX = 38 + mouseCurrent.current.x * 12
-        const pullY = 34 - mouseCurrent.current.y * 12
-        glareRef.current.style.background = `
-          radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.52), rgba(147,197,253,0.12) 45%, transparent 70%),
-          linear-gradient(130deg, rgba(255,255,255,0.38) 0%, transparent 50%, rgba(196,181,253,0.14) 100%)
-        `
+        const pullX = 38 + mouseCurrent.current.x * 10
+        const pullY = 34 - mouseCurrent.current.y * 10
+        const isCarrier = activeIdxRef.current === 2
+        glareRef.current.style.background = isCarrier
+          ? `radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.42), transparent 70%), linear-gradient(130deg, rgba(255,255,255,0.22) 0%, transparent 60%)`
+          : `radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.50), rgba(147,197,253,0.10) 45%, transparent 70%), linear-gradient(130deg, rgba(255,255,255,0.35) 0%, transparent 50%, rgba(196,181,253,0.12) 100%)`
       }
 
       // Continuous wave shape flow with butter-smooth color blending across slide transitions
@@ -470,61 +481,79 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
-      {/* 2. Subtle Flowing Vector Bézier Curves Overlay */}
+      {/* 2. Razor-sharp Satin Vector Contours Overlay (Dual-layer Opacity Cross-fade for 100% smooth morphing) */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none opacity-65"
+        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
+        style={{ opacity: activeIdx === 2 ? 0 : 0.65 }}
         viewBox="0 0 1440 620"
         fill="none"
         preserveAspectRatio="none"
       >
         <defs>
-          <linearGradient id="curveGrad1" x1="0%" y1="20%" x2="100%" y2="80%">
+          <linearGradient id="curveGradBlue1" x1="0%" y1="20%" x2="100%" y2="80%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop
-              offset="42%"
-              stopColor={
-                activeIdx === 0 ? "#3B82F6" : activeIdx === 1 ? "#0284C7" : "#F59E0B"
-              }
-              stopOpacity="0.24"
-              style={{ transition: "stop-color 1.2s ease" }}
-            />
-            <stop
-              offset="74%"
-              stopColor={
-                activeIdx === 0 ? "#7C3AED" : activeIdx === 1 ? "#4F46E5" : "#EC4899"
-              }
-              stopOpacity="0.28"
-              style={{ transition: "stop-color 1.2s ease" }}
-            />
+            <stop offset="38%" stopColor="#38BDF8" stopOpacity="0.30" />
+            <stop offset="70%" stopColor="#6366F1" stopOpacity="0.25" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
-          <linearGradient id="curveGrad2" x1="10%" y1="80%" x2="95%" y2="15%">
+          <linearGradient id="curveGradBlue2" x1="10%" y1="80%" x2="95%" y2="15%">
             <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.9" />
-            <stop
-              offset="82%"
-              stopColor={
-                activeIdx === 0 ? "#38BDF8" : activeIdx === 1 ? "#06B6D4" : "#FB923C"
-              }
-              stopOpacity="0.26"
-              style={{ transition: "stop-color 1.2s ease" }}
-            />
+            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.85" />
+            <stop offset="80%" stopColor="#0EA5E9" stopOpacity="0.28" />
             <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path
           d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
-          stroke="url(#curveGrad1)"
+          stroke="url(#curveGradBlue1)"
           strokeWidth="1.8"
         />
         <path
           d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
-          stroke="url(#curveGrad2)"
-          strokeWidth="2.4"
+          stroke="url(#curveGradBlue2)"
+          strokeWidth="2.2"
         />
         <path
           d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
-          stroke="url(#curveGrad1)"
+          stroke="url(#curveGradBlue1)"
+          strokeWidth="1.4"
+        />
+      </svg>
+
+      <svg
+        className="absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-1000"
+        style={{ opacity: activeIdx === 2 ? 0.70 : 0 }}
+        viewBox="0 0 1440 620"
+        fill="none"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="curveGradCarrier1" x1="0%" y1="20%" x2="100%" y2="80%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+            <stop offset="40%" stopColor="#F59E0B" stopOpacity="0.26" />
+            <stop offset="72%" stopColor="#EC4899" stopOpacity="0.24" />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="curveGradCarrier2" x1="10%" y1="80%" x2="95%" y2="15%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
+            <stop offset="48%" stopColor="#FFFFFF" stopOpacity="0.85" />
+            <stop offset="80%" stopColor="#FB923C" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          d="M-100,480 C320,560 580,120 980,240 C1220,310 1360,140 1560,90"
+          stroke="url(#curveGradCarrier1)"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M-60,360 C380,440 640,60 1040,190 C1260,260 1390,180 1540,150"
+          stroke="url(#curveGradCarrier2)"
+          strokeWidth="2.2"
+        />
+        <path
+          d="M120,580 C520,460 760,340 1120,410 C1310,445 1420,290 1560,240"
+          stroke="url(#curveGradCarrier1)"
           strokeWidth="1.4"
         />
       </svg>
@@ -618,44 +647,54 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             }}
             className="relative w-full max-w-[440px]"
           >
-            {/* 1. Balanced Midpoint Iridescent Base Aura (opacity-70: between v2.3's 60 and v2.4's 85) */}
+            {/* 1. Slide 0 (漫生成) Exclusive Base Aura - Pure Opacity Cross-Fade */}
             <div
-              className="absolute -inset-4 rounded-[32px] opacity-70 blur-2xl pointer-events-none transition-all duration-1000 ease-out"
+              className="absolute -inset-4 rounded-[32px] blur-2xl pointer-events-none transition-opacity duration-1000 ease-in-out"
               style={{
-                background:
-                  activeIdx === 0
-                    ? "radial-gradient(circle at 35% 35%, rgba(56,189,248,0.40), rgba(99,102,241,0.34) 55%, rgba(236,72,153,0.22) 90%)"
-                    : activeIdx === 1
-                    ? "radial-gradient(circle at 35% 35%, rgba(37,99,235,0.40), rgba(6,182,212,0.34) 55%, rgba(99,102,241,0.22) 90%)"
-                    : "radial-gradient(circle at 35% 35%, rgba(249,115,22,0.38), rgba(236,72,153,0.34) 55%, rgba(139,92,246,0.22) 90%)",
+                opacity: activeIdx === 0 ? 0.65 : 0,
+                background: "radial-gradient(circle at 35% 35%, rgba(56,189,248,0.38), rgba(99,102,241,0.28) 55%, rgba(236,72,153,0.16) 90%)",
               }}
             />
 
-            {/* 2. Subtle Secondary Ambient Glow (opacity-45, gently drifts with breeze) */}
+            {/* 2. Slide 1 (步点流量) Exclusive Base Aura - Pure Opacity Cross-Fade */}
+            <div
+              className="absolute -inset-4 rounded-[32px] blur-2xl pointer-events-none transition-opacity duration-1000 ease-in-out"
+              style={{
+                opacity: activeIdx === 1 ? 0.65 : 0,
+                background: "radial-gradient(circle at 35% 35%, rgba(37,99,235,0.38), rgba(6,182,212,0.28) 55%, rgba(99,102,241,0.16) 90%)",
+              }}
+            />
+
+            {/* Slide 2 (运营商基地): 周围零光晕、零渲染，纯粹磨砂玻璃透视背后！ */}
+
+            {/* 3. Secondary Ambient Glow (Only for slide 0 & 1, completely invisible for slide 2) */}
             <div
               ref={auraOrbRef}
-              className="absolute -top-4 -right-4 w-40 h-40 rounded-full opacity-45 blur-2xl pointer-events-none transition-all duration-1000 ease-out"
+              className="absolute -top-4 -right-4 w-40 h-40 rounded-full blur-2xl pointer-events-none transition-opacity duration-1000 ease-in-out"
               style={{
+                opacity: activeIdx === 0 ? 0.40 : activeIdx === 1 ? 0.40 : 0,
                 background:
                   activeIdx === 0
-                    ? "radial-gradient(circle, rgba(59,130,246,0.48) 0%, rgba(168,85,247,0.32) 65%, transparent 100%)"
-                    : activeIdx === 1
-                    ? "radial-gradient(circle, rgba(14,165,233,0.48) 0%, rgba(59,130,246,0.32) 65%, transparent 100%)"
-                    : "radial-gradient(circle, rgba(251,146,60,0.48) 0%, rgba(244,63,94,0.32) 65%, transparent 100%)",
+                    ? "radial-gradient(circle, rgba(59,130,246,0.40) 0%, rgba(168,85,247,0.24) 65%, transparent 100%)"
+                    : "radial-gradient(circle, rgba(14,165,233,0.40) 0%, rgba(59,130,246,0.24) 65%, transparent 100%)",
               }}
             />
 
-            {/* 3. Midpoint Optical Liquid Glass Slab */}
+            {/* 4. Optical Frosted Glass Slab (Pure translucent frosted glass for Slide 2, showing behind) */}
             <div
-              className="relative rounded-[24px] p-6 md:p-7 overflow-hidden"
+              className="relative rounded-[24px] p-6 md:p-7 overflow-hidden transition-all duration-700 ease-out"
               style={{
                 background:
-                  "linear-gradient(150deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.30) 60%, rgba(240,249,255,0.42) 100%)",
-                backdropFilter: "blur(28px) saturate(190%)",
-                WebkitBackdropFilter: "blur(28px) saturate(190%)",
+                  activeIdx === 2
+                    ? "linear-gradient(135deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.24) 100%)"
+                    : "linear-gradient(150deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.30) 60%, rgba(240,249,255,0.42) 100%)",
+                backdropFilter: "blur(28px) saturate(170%)",
+                WebkitBackdropFilter: "blur(28px) saturate(170%)",
                 border: "1.2px solid rgba(255, 255, 255, 0.90)",
                 boxShadow:
-                  "0 24px 52px -12px rgba(30, 58, 138, 0.13), 0 6px 18px -4px rgba(15, 23, 42, 0.05), inset 0 2px 1.5px rgba(255, 255, 255, 1), inset 1.5px 0 2px rgba(255, 255, 255, 0.65), inset 0 -2px 4px rgba(59, 130, 246, 0.18)",
+                  activeIdx === 2
+                    ? "0 20px 48px -12px rgba(15, 23, 42, 0.07), 0 4px 12px -2px rgba(15, 23, 42, 0.03), inset 0 2px 1.5px rgba(255, 255, 255, 1), inset 1px 0 1.5px rgba(255, 255, 255, 0.6), inset 0 -1.5px 2px rgba(255, 255, 255, 0.4)"
+                    : "0 24px 52px -12px rgba(30, 58, 138, 0.13), 0 6px 18px -4px rgba(15, 23, 42, 0.05), inset 0 2px 1.5px rgba(255, 255, 255, 1), inset 1.5px 0 2px rgba(255, 255, 255, 0.65), inset 0 -2px 4px rgba(59, 130, 246, 0.18)",
               }}
             >
               {/* Dynamic Specular Glare */}
