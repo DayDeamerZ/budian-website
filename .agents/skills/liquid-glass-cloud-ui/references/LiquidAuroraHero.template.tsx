@@ -405,21 +405,11 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
         glassSlabRef.current.style.transform = `rotateX(${rx.toFixed(3)}deg) rotateY(${ry.toFixed(3)}deg)`
       }
 
-      // Gentle ambient drift of the underlying color aura behind the glass card (Slide 0 & 1 only)
-      if (auraOrbRef.current && activeIdxRef.current !== 2) {
-        const ox = mouseCurrent.current.x * 12
-        const oy = -mouseCurrent.current.y * 12
-        auraOrbRef.current.style.transform = `translate3d(${ox.toFixed(1)}px, ${oy.toFixed(1)}px, 0)`
-      }
-
-      // Subtle specular sheen shift across the glass surface
+      // Subtle pure specular sheen shift across the translucent glass surface (Zero color glare)
       if (glareRef.current) {
-        const pullX = 38 + mouseCurrent.current.x * 10
-        const pullY = 34 - mouseCurrent.current.y * 10
-        const isCarrier = activeIdxRef.current === 2
-        glareRef.current.style.background = isCarrier
-          ? `radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.42), transparent 70%), linear-gradient(130deg, rgba(255,255,255,0.22) 0%, transparent 60%)`
-          : `radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.50), rgba(147,197,253,0.10) 45%, transparent 70%), linear-gradient(130deg, rgba(255,255,255,0.35) 0%, transparent 50%, rgba(196,181,253,0.12) 100%)`
+        const pullX = 38 + mouseCurrent.current.x * 8
+        const pullY = 34 - mouseCurrent.current.y * 8
+        glareRef.current.style.background = `radial-gradient(320px circle at ${pullX.toFixed(1)}% ${pullY.toFixed(1)}%, rgba(255,255,255,0.25), transparent 70%)`
       }
 
       // Continuous wave shape flow with butter-smooth color blending across slide transitions
@@ -634,7 +624,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Right 5 Columns: Balanced Midpoint Optical Liquid Glass Console */}
+        {/* Right 5 Columns: Truly High-Translucency Pure Liquid Frosted Glass Console */}
         <div
           className="lg:col-span-5 flex items-center justify-center"
           style={{ perspective: "1400px" }}
@@ -647,70 +637,26 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
             }}
             className="relative w-full max-w-[440px]"
           >
-            {/* 1. Slide 0 (漫生成) Exclusive Base Aura */}
-            {activeIdx === 0 && (
-              <div
-                className="absolute -inset-4 rounded-[32px] blur-2xl pointer-events-none"
-                style={{
-                  background: "radial-gradient(circle at 35% 35%, rgba(56,189,248,0.38), rgba(99,102,241,0.28) 55%, rgba(236,72,153,0.16) 90%)",
-                }}
-              />
-            )}
-
-            {/* 2. Slide 1 (步点流量) Exclusive Base Aura */}
-            {activeIdx === 1 && (
-              <div
-                className="absolute -inset-4 rounded-[32px] blur-2xl pointer-events-none"
-                style={{
-                  background: "radial-gradient(circle at 35% 35%, rgba(37,99,235,0.38), rgba(6,182,212,0.28) 55%, rgba(99,102,241,0.16) 90%)",
-                }}
-              />
-            )}
-
-            {/* Slide 2 (运营商基地): 绝对零外光晕、零外阴影，纯粹一块半透明高透磨砂玻璃！ */}
-
-            {/* 3. Secondary Ambient Glow (Strictly Slide 0 & 1 only) */}
-            {activeIdx !== 2 && (
-              <div
-                ref={auraOrbRef}
-                className="absolute -top-4 -right-4 w-40 h-40 rounded-full blur-2xl pointer-events-none"
-                style={{
-                  background:
-                    activeIdx === 0
-                      ? "radial-gradient(circle, rgba(59,130,246,0.40) 0%, rgba(168,85,247,0.24) 65%, transparent 100%)"
-                      : "radial-gradient(circle, rgba(14,165,233,0.40) 0%, rgba(59,130,246,0.24) 65%, transparent 100%)",
-                }}
-              />
-            )}
-
-            {/* 4. Optical Frosted Glass Slab (High transparency for Slide 2, zero outer shadows, clearly revealing background silk) */}
+            {/* Pure Optical Frosted Glass Slab: High-translucency, zero surrounding halos/shadows, revealing background silk */}
             <div
               className="relative rounded-[24px] p-6 md:p-7 overflow-hidden transition-all duration-500 ease-out"
               style={{
-                background:
-                  activeIdx === 2
-                    ? "rgba(255, 255, 255, 0.12)"
-                    : "linear-gradient(150deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.30) 60%, rgba(240,249,255,0.42) 100%)",
-                backdropFilter: activeIdx === 2 ? "blur(10px)" : "blur(28px) saturate(170%)",
-                WebkitBackdropFilter: activeIdx === 2 ? "blur(10px)" : "blur(28px) saturate(170%)",
-                border: activeIdx === 2 ? "1px solid rgba(255, 255, 255, 0.55)" : "1.2px solid rgba(255, 255, 255, 0.90)",
-                boxShadow:
-                  activeIdx === 2
-                    ? "none"
-                    : "0 24px 52px -12px rgba(30, 58, 138, 0.13), 0 6px 18px -4px rgba(15, 23, 42, 0.05), inset 0 2px 1.5px rgba(255, 255, 255, 1), inset 1.5px 0 2px rgba(255, 255, 255, 0.65), inset 0 -2px 4px rgba(59, 130, 246, 0.18)",
+                background: "rgba(255, 255, 255, 0.14)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+                border: "1px solid rgba(255, 255, 255, 0.60)",
+                boxShadow: "inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(255, 255, 255, 0.40)",
               }}
             >
-              {/* Dynamic Specular Glare (completely omitted for Slide 2) */}
-              {activeIdx !== 2 && (
-                <div
-                  ref={glareRef}
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "radial-gradient(320px circle at 38% 34%, rgba(255,255,255,0.52), rgba(147,197,253,0.12) 45%, transparent 70%)",
-                  }}
-                />
-              )}
+              {/* Pure Soft Specular Sheen (Zero color glare, subtle white light only) */}
+              <div
+                ref={glareRef}
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    "radial-gradient(320px circle at 38% 34%, rgba(255,255,255,0.30), transparent 70%)",
+                }}
+              />
 
               <AnimatePresence mode="wait">
                 <motion.div
@@ -721,7 +667,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                   transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {/* Calm Architectural Header */}
-                  <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-white/70">
+                  <div className="relative z-10 flex items-baseline justify-between pb-4 mb-4 border-b border-white/60">
                     <span className="text-[14px] font-semibold text-slate-900 tracking-tight">
                       {activeSlide.panelTitle}
                     </span>
@@ -730,21 +676,16 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                     </span>
                   </div>
 
-                  {/* Translucent Nested Glass Rows (High transparency for Slide 2 to show behind clearly) */}
+                  {/* Translucent Nested Glass Rows (High transparency, showing background silk clearly) */}
                   <div className="relative z-10 space-y-2.5">
                     {activeSlide.panelRows.map((row) => (
                       <div
                         key={row.idx}
                         className="px-4 py-3 rounded-xl flex items-center justify-between gap-3 transition-colors duration-500"
                         style={{
-                          background:
-                            activeIdx === 2
-                              ? "rgba(255, 255, 255, 0.22)"
-                              : "linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.44) 100%)",
-                          backdropFilter: activeIdx === 2 ? "none" : "blur(14px)",
-                          WebkitBackdropFilter: activeIdx === 2 ? "none" : "blur(14px)",
-                          border: activeIdx === 2 ? "1px solid rgba(255,255,255,0.50)" : "1px solid rgba(255,255,255,0.88)",
-                          boxShadow: activeIdx === 2 ? "none" : "0 2px 10px rgba(15,23,42,0.03), inset 0 1px 1px rgba(255,255,255,0.95)",
+                          background: "rgba(255, 255, 255, 0.20)",
+                          border: "1px solid rgba(255, 255, 255, 0.50)",
+                          boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.60)",
                         }}
                       >
                         <div className="flex items-start gap-3">
@@ -763,9 +704,8 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                         <span
                           className="shrink-0 text-[11px] font-medium text-slate-700 px-2.5 py-1 rounded-md"
                           style={{
-                            background: activeIdx === 2 ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.72)",
-                            border: activeIdx === 2 ? "1px solid rgba(255,255,255,0.60)" : "1px solid rgba(255,255,255,0.92)",
-                            boxShadow: activeIdx === 2 ? "none" : "inset 0 1px 0 rgba(255,255,255,1)",
+                            background: "rgba(255, 255, 255, 0.45)",
+                            border: "1px solid rgba(255, 255, 255, 0.65)",
                           }}
                         >
                           {row.status}
@@ -775,7 +715,7 @@ export const LiquidAuroraHero: React.FC<LiquidAuroraHeroProps> = ({
                   </div>
 
                   {/* Grounded Bottom Metadata Bar */}
-                  <div className="relative z-10 mt-4 pt-3.5 border-t border-white/70 flex items-center justify-between text-[11.5px] text-slate-600">
+                  <div className="relative z-10 mt-4 pt-3.5 border-t border-white/60 flex items-center justify-between text-[11.5px] text-slate-600">
                     <span>{activeSlide.panelFooterLeft}</span>
                     <span className="text-slate-800 font-medium">{activeSlide.panelFooterRight}</span>
                   </div>
